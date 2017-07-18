@@ -9,10 +9,10 @@
 4. Информация о комнатах (хэш таблица ```idAndRoomWR(public. key = id (uint), value = struct{uint id, uint countIdTable, uint betAmount, uint tableLifeTime, uint maxPlayers, uint numberPlayersOpenTable, uint tablesSize})```)
 
 ### Методы:
-1. addAdmin(address) - добавить администратора.
-2. createRoomWithRates(uint betAmount, uint tableLifeTime, uint maxPlayers, uint[] awards) - создать комнату.
-3. putPlayerTable(uint idRoom) payable - посадить игрока за стол.
-4. setResultPlayer(address player, uint result) - записать результат игрока.
+1. ```addAdmin(address)``` - добавить администратора.
+2. ```createRoomWithRates(uint betAmount, uint tableLifeTime, uint maxPlayers, uint[] awards)``` - создать комнату.
+3. ```putPlayerTable(uint idRoom) payable``` - посадить игрока за стол.
+4. ```setResultPlayer(address player, uint result)``` - записать результат игрока.
 
 ### События:
 1. При добавлении администратора инициируется событие ```AddAdmin(address)```.
