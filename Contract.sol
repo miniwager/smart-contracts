@@ -33,8 +33,13 @@ contract StorageGame {
     
     
 ///////////////////////////////////////////////// Storage (begin)
+    
+    // Id room without bets
+    uint public idRoomWithoutBets = 0;
+    uint public bankRoomWithoutBets = 0;
+
     // Count rooms
-    uint256 countIdRoomWithRates = 1;
+    uint countIdRoomWithRates = 1;
     
     // Share awards
     mapping(uint => uint[]) public awardsPlace;
@@ -91,8 +96,16 @@ contract StorageGame {
     
 ///////////////////////////////////////////////// Create room and table (begin)
     event CreateRoomWithRates(uint id, uint betAmount, uint tableLifeTime, uint maxPlayers, uint fee);
-    function createRoomWithRates(uint betAmount, uint tableLifeTime, uint maxPlayers, uint fee, uint[] awards) {
+    function createRoomWithRates(uint betAmount, uint tableLifeTime, uint maxPlayers, uint fee, uint[] awards) payable {
         if(isAdmin(msg.sender)){
+            
+            if(betAmount == 0 && maxPlayers == 0 && fee == 0 && (idRoomWithoutBets != 0 || msg.value == 0)){
+                CreateRoomWithRates(0, 0, 0, 0, 0);
+                return;
+            } else if(betAmount == 0 && maxPlayers == 0 && fee == 0){
+                idRoomWithoutBets = countIdRoomWithRates;
+                bankRoomWithoutBets = msg.value;
+            }
             
             idRoomAndRoomWR[countIdRoomWithRates].id = countIdRoomWithRates;
             idRoomAndRoomWR[countIdRoomWithRates].countIdTable = 1;
@@ -125,9 +138,18 @@ contract StorageGame {
 ///////////////////////////////////////////////// Start game (begin)
     event PutPlayerTable(address player, uint idRoom, uint idTable);
     function putPlayerTable(uint idRoom) payable {
-        if(idRoomAndRoomWR[idRoom].id != 0 && msg.value >= idRoomAndRoomWR[idRoom].betAmount &&
-          (playerLocations[msg.sender].idRoom == 0 && playerLocations[msg.sender].idTable == 0) &&
-          idRoomAndRoomWR[idRoom].maxPlayers > 0){
+        if(idRoomAndRoomWR[idRoom].id != 0){
+            if(isRoomWB(idRoom)){
+                putPlayerTableRoomWB(idRoom);
+            } else {
+                putPlayerTableRoomWR(idRoom);
+            }
+        }
+    }
+
+    function putPlayerTableRoomWR(uint idRoom) internal {
+        if(msg.value >= idRoomAndRoomWR[idRoom].betAmount && idRoomAndRoomWR[idRoom].maxPlayers > 0 &&
+          (playerLocations[msg.sender].idRoom == 0 && playerLocations[msg.sender].idTable == 0)){
             
             uint value = msg.value - (msg.value/100) * idRoomAndRoomWR[idRoom].fee;
             uint closingTime1 = block.timestamp + idRoomAndRoomWR[idRoom].tableLifeTime;
@@ -176,6 +198,38 @@ contract StorageGame {
             PutPlayerTable(msg.sender, idroom, idtable);
         }
     }
+    
+    function putPlayerTableRoomWB(uint idRoom) internal {
+        if(playerLocations[msg.sender].idRoom == 0 && playerLocations[msg.sender].idTable == 0){
+            
+            uint closingTime1 = block.timestamp + idRoomAndRoomWR[idRoom].tableLifeTime;
+            
+            if(idRoomIdTableAndTableIndex[idRoom].length == 0){
+                uint idTableTemp = idRoomAndRoomWR[idRoom].countIdTable;
+                idRoomIdTableAndTable[idRoom][idTableTemp] = createTable(idTableTemp, closingTime1);
+                idRoomIdTableAndTableIndex[idRoom].push(idTableTemp);
+                idRoomIdTableAndTable[idRoom][idTableTemp].bank = bankRoomWithoutBets;
+                idRoomAndRoomWR[idRoom].countIdTable++;
+            }
+            
+            uint offset = idRoomIdTableAndTableIndex[idRoom].length;
+            uint closingTime2 = idRoomIdTableAndTable[idRoom][offset].closingTime;
+            
+            if(closingTime2 > block.timestamp){
+                playersAndResult[idRoom][offset][msg.sender].setResult = false;
+                playersAndResult[idRoom][offset][msg.sender].result = 0;
+                playersAndResult[idRoom][offset][msg.sender].reward = 0;
+                playersAndResult[idRoom][offset][msg.sender].created = true;
+                idRoomAndRoomWR[idRoom].numberPlayersOpenTable++;
+                playersAndResultIndex[idRoom][offset].push(msg.sender);
+            }
+            
+            uint idroom = idRoomAndRoomWR[idRoom].id;
+            uint idtable = idRoomIdTableAndTableIndex[idRoom].length;
+            playerLocations[msg.sender] = PlayerLocation(idroom, idtable);
+            PutPlayerTable(msg.sender, idroom, idtable);
+        }
+    }
 ///////////////////////////////////////////////// Start game (end)
 
 
@@ -194,6 +248,13 @@ contract StorageGame {
             return false;
         }
         return true;
+    }
+    
+    function isRoomWB(uint idRoom) internal returns (bool) {
+        if(idRoomAndRoomWR[idRoom].betAmount == 0 && idRoomAndRoomWR[idRoom].maxPlayers == 0 && idRoomAndRoomWR[idRoom].fee == 0){
+            return true;
+        }
+        return false;
     }
 
     event SetResultPlayer(uint idRoom, uint idTable);
@@ -231,9 +292,17 @@ contract StorageGame {
             }
         }
         
-        deleteInfoTable(idRoom, idTable);
+        if(isRoomWB(idRoom)){
+            deleteRoom(idRoom);
+        } else {
+            deleteInfoTable(idRoom, idTable);
+        }
     }
-    
+///////////////////////////////////////////////// Set result and pay rewards (end)
+
+
+
+///////////////////////////////////////////////// Delete table and root (begin)
     function deleteInfoTable(uint idRoom, uint idTable) internal {
         address[] memory addresses = playersAndResultIndex[idRoom][idTable];
         for(uint i = 0; i < addresses.length; i++){
@@ -242,14 +311,16 @@ contract StorageGame {
         }
         delete playersAndResultIndex[idRoom][idTable];
     }
-///////////////////////////////////////////////// Set result and pay rewards (end)
 
-
-
-///////////////////////////////////////////////// Delete room (begin)
     event DeleteRoom(uint idRoom);
     function deleteRoom(uint idRoom) {
         if(isAdmin(msg.sender)){
+            
+            if(isRoomWB(idRoom)){
+                idRoomWithoutBets = 0;
+                bankRoomWithoutBets = 0;
+            }
+            
             delete awardsPlace[idRoom];
             
             uint[] memory tableIndex = idRoomIdTableAndTableIndex[idRoom];
@@ -268,7 +339,7 @@ contract StorageGame {
             DeleteRoom(idRoom);
         }
     }
-///////////////////////////////////////////////// Delete room (end)
+///////////////////////////////////////////////// Delete table and root (end)
 
 
 
@@ -369,3 +440,6 @@ contract StorageGame {
 //     }
 // ///////////////////////////////////////////////// Preparation of results (end)
 }
+
+
+
