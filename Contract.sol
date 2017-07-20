@@ -6,16 +6,13 @@ contract StorageGame {
         bool setResult;
         uint result;
         uint reward;
+        bool created;
     }
     
     struct Table {
         uint id;
         uint closingTime;
-        
         uint bank;
-        
-        mapping(address => GameInfoPlayer) playersAndResult;
-        address[] players;
     }
     
     struct RoomWithRates {
@@ -25,18 +22,38 @@ contract StorageGame {
         uint tableLifeTime;
         uint maxPlayers;
         uint numberPlayersOpenTable;
-        
         uint fee;
-        uint[] awardsPlace;
-        
-        uint tablesSize;
-        Table[] tables;
     }
     
     struct PlayerLocation{
         uint idRoom;
         uint idTable;
     }
+    
+    
+    
+///////////////////////////////////////////////// Storage (begin)
+    // Count rooms
+    uint256 countIdRoomWithRates = 1;
+    
+    // Share awards
+    mapping(uint => uint[]) public awardsPlace;
+    
+    // Player results
+    mapping(uint => mapping(uint => address[])) public playersAndResultIndex;
+    mapping(uint => mapping(uint => mapping(address => GameInfoPlayer))) public playersAndResult;
+    
+    // Tables
+    mapping(uint => uint[]) public idRoomIdTableAndTableIndex;
+    mapping(uint => mapping(uint => Table)) public idRoomIdTableAndTable;
+    
+    // Rooms
+    uint[] idRoomAndRoomWRIndex;
+    mapping(uint => RoomWithRates) public idRoomAndRoomWR;
+    
+    // Player location
+    mapping(address => PlayerLocation) public playerLocations;
+///////////////////////////////////////////////// Storage (end)
 
 
     
@@ -62,49 +79,35 @@ contract StorageGame {
         return access;
     }
 ///////////////////////////////////////////////// Admin (end)
-
-
-
-///////////////////////////////////////////////// Storage (begin)
-    uint256 countIdRoomWithRates = 1;
-    mapping(uint => RoomWithRates) public idAndRoomWR;
-    uint[] roomWRId;
-    uint public idAndRoomWRSize;
     
-    mapping(address => PlayerLocation) public playerLocations;
-    
-    address[] addressesPlaceWinnings;
-    GameInfoPlayer[] gameInfoPlayerPlaceWinnings;
-///////////////////////////////////////////////// Storage (end)
-
     
     
     function StorageGame() {
         admins.push(msg.sender);
     }
     
+    function () payable {}
     
     
 ///////////////////////////////////////////////// Create room and table (begin)
-    event CreateRoomWithRates(uint id, uint betAmount, uint tableLifeTime, uint maxPlayers);
-    // function createRoomWithRates(uint betAmount, uint tableLifeTime, uint maxPlayers) {
-    function createRoomWithRates(uint betAmount, uint tableLifeTime, uint maxPlayers, uint[] awards) {
+    event CreateRoomWithRates(uint id, uint betAmount, uint tableLifeTime, uint maxPlayers, uint fee);
+    function createRoomWithRates(uint betAmount, uint tableLifeTime, uint maxPlayers, uint fee, uint[] awards) {
         if(isAdmin(msg.sender)){
-            idAndRoomWR[countIdRoomWithRates].id = countIdRoomWithRates;
-            idAndRoomWR[countIdRoomWithRates].countIdTable = 1;
-            idAndRoomWR[countIdRoomWithRates].betAmount = betAmount;
-            idAndRoomWR[countIdRoomWithRates].tableLifeTime = tableLifeTime;
-            idAndRoomWR[countIdRoomWithRates].maxPlayers = maxPlayers;
-            idAndRoomWR[countIdRoomWithRates].numberPlayersOpenTable = 0;
+            
+            idRoomAndRoomWR[countIdRoomWithRates].id = countIdRoomWithRates;
+            idRoomAndRoomWR[countIdRoomWithRates].countIdTable = 1;
+            idRoomAndRoomWR[countIdRoomWithRates].betAmount = betAmount;
+            idRoomAndRoomWR[countIdRoomWithRates].tableLifeTime = tableLifeTime;
+            idRoomAndRoomWR[countIdRoomWithRates].maxPlayers = maxPlayers;
+            idRoomAndRoomWR[countIdRoomWithRates].numberPlayersOpenTable = 0;
+            idRoomAndRoomWR[countIdRoomWithRates].fee = fee;
+            idRoomAndRoomWRIndex.push(countIdRoomWithRates);
             
             for(uint i = 0; i < awards.length; i++){
-                idAndRoomWR[countIdRoomWithRates].awardsPlace.push(awards[i]);
+                awardsPlace[countIdRoomWithRates].push(awards[i]);
             }
             
-            CreateRoomWithRates(countIdRoomWithRates, betAmount, tableLifeTime, maxPlayers);
-            
-            roomWRId.push(countIdRoomWithRates);
-            idAndRoomWRSize++;
+            CreateRoomWithRates(countIdRoomWithRates, betAmount, tableLifeTime, maxPlayers, fee);
             countIdRoomWithRates++;
         }
     }
@@ -119,103 +122,70 @@ contract StorageGame {
 
 
 
-///////////////////////////////////////////////// Verification (begin)
-    function checkValidTable(Table _table, uint _maxPlayers) internal returns (bool) {
-        if(_table.closingTime < block.timestamp || _table.players.length >= _maxPlayers){
-            return false;
-        }
-        return true;
-    }
-    
-    function isNullRoomWithRates(RoomWithRates a) internal returns (bool) {
-        if(a.id == 0){
-            return true;
-        }
-        return false;
-    }
-    
-    function playerPlays(address player) internal returns (bool) {
-        PlayerLocation memory infoLoction = playerLocations[player];
-        if(infoLoction.idRoom == 0 || infoLoction.idTable == 0){
-            return false;
-        }
-        return true;
-    }
-///////////////////////////////////////////////// Verification (end)
-
-
 ///////////////////////////////////////////////// Start game (begin)
     event PutPlayerTable(address player, uint idRoom, uint idTable);
     function putPlayerTable(uint idRoom) payable {
-        if(!isNullRoomWithRates(idAndRoomWR[idRoom]) && msg.value >= idAndRoomWR[idRoom].betAmount && !playerPlays(msg.sender)){
+        if(idRoomAndRoomWR[idRoom].id != 0 && msg.value >= idRoomAndRoomWR[idRoom].betAmount &&
+          (playerLocations[msg.sender].idRoom == 0 && playerLocations[msg.sender].idTable == 0) &&
+          idRoomAndRoomWR[idRoom].maxPlayers > 0){
             
-            uint value = msg.value - (msg.value/100) * idAndRoomWR[idRoom].fee;
+            uint value = msg.value - (msg.value/100) * idRoomAndRoomWR[idRoom].fee;
+            uint closingTime1 = block.timestamp + idRoomAndRoomWR[idRoom].tableLifeTime;
             
-            uint time = idAndRoomWR[idRoom].tableLifeTime + block.timestamp;
-            if(idAndRoomWR[idRoom].tables.length == 0){
-                idAndRoomWR[idRoom].tables.push(createTable(idAndRoomWR[idRoom].countIdTable, time));
-                idAndRoomWR[idRoom].countIdTable++;
-                idAndRoomWR[idRoom].tablesSize++;
+            if(idRoomIdTableAndTableIndex[idRoom].length == 0){
+                uint idTableTemp = idRoomAndRoomWR[idRoom].countIdTable;
+                idRoomIdTableAndTable[idRoom][idTableTemp] = createTable(idTableTemp, closingTime1);
+                idRoomIdTableAndTableIndex[idRoom].push(idTableTemp);
+                idRoomAndRoomWR[idRoom].countIdTable++;
             }
             
-            uint offset = idAndRoomWR[idRoom].tables.length - 1;
-            if(checkValidTable(idAndRoomWR[idRoom].tables[offset], idAndRoomWR[idRoom].maxPlayers)){
-                idAndRoomWR[idRoom].tables[offset].playersAndResult[msg.sender] = GameInfoPlayer(false, 0, 0);
-                idAndRoomWR[idRoom].tables[offset].players.push(msg.sender);
+            uint offset = idRoomIdTableAndTableIndex[idRoom].length;
+            uint maxPlayers = idRoomAndRoomWR[idRoom].maxPlayers;
+            uint tablePlayers = playersAndResultIndex[idRoom][offset].length;
+            uint closingTime2 = idRoomIdTableAndTable[idRoom][offset].closingTime;
+            
+            if(closingTime2 > block.timestamp && tablePlayers < maxPlayers){
+                idRoomIdTableAndTable[idRoom][offset].bank += value;
+                playersAndResult[idRoom][offset][msg.sender].setResult = false;
+                playersAndResult[idRoom][offset][msg.sender].result = 0;
+                playersAndResult[idRoom][offset][msg.sender].reward = 0;
+                playersAndResult[idRoom][offset][msg.sender].created = true;
                 
-                idAndRoomWR[idRoom].tables[offset].bank += value;
-        
-                idAndRoomWR[idRoom].numberPlayersOpenTable++;
+                idRoomAndRoomWR[idRoom].numberPlayersOpenTable++;
+                
+                playersAndResultIndex[idRoom][offset].push(msg.sender);
             } else {
-                idAndRoomWR[idRoom].numberPlayersOpenTable = 0;
-                idAndRoomWR[idRoom].tables.push(createTable(idAndRoomWR[idRoom].countIdTable, time));
-                idAndRoomWR[idRoom].countIdTable++;
-                idAndRoomWR[idRoom].tablesSize++;
+                uint idTableTemp2 = idRoomAndRoomWR[idRoom].countIdTable;
+                idRoomIdTableAndTable[idRoom][idTableTemp2] = createTable(idTableTemp2, closingTime1);
+                idRoomIdTableAndTableIndex[idRoom].push(idTableTemp2);
+                idRoomAndRoomWR[idRoom].countIdTable++;
+                idRoomAndRoomWR[idRoom].numberPlayersOpenTable++;
                 
-                idAndRoomWR[idRoom].tables[offset + 1].playersAndResult[msg.sender] = GameInfoPlayer(false, 0, 0);
-                idAndRoomWR[idRoom].tables[offset + 1].players.push(msg.sender);
+                idRoomIdTableAndTable[idRoom][idTableTemp2].bank += value;
+                playersAndResult[idRoom][idTableTemp2][msg.sender].setResult = false;
+                playersAndResult[idRoom][idTableTemp2][msg.sender].result = 0;
+                playersAndResult[idRoom][idTableTemp2][msg.sender].reward = 0;
+                playersAndResult[idRoom][idTableTemp2][msg.sender].created = true;
                 
-                idAndRoomWR[idRoom].tables[offset + 1].bank += value;
-                
-                idAndRoomWR[idRoom].numberPlayersOpenTable++;
+                playersAndResultIndex[idRoom][idTableTemp2].push(msg.sender);
             }
             
-            uint idroom = idAndRoomWR[idRoom].id;
-            uint idtable = idAndRoomWR[idRoom].tables[idAndRoomWR[idRoom].tables.length - 1].id;
+            uint idroom = idRoomAndRoomWR[idRoom].id;
+            uint idtable = idRoomIdTableAndTableIndex[idRoom].length;
             playerLocations[msg.sender] = PlayerLocation(idroom, idtable);
             PutPlayerTable(msg.sender, idroom, idtable);
         }
     }
 ///////////////////////////////////////////////// Start game (end)
-    
-    
-    
+
+
+
 ///////////////////////////////////////////////// Set result and pay rewards (begin)
-    event SetResultPlayer(bool gameover, uint idRoom, uint idTable);
-    function setResultPlayer(address player, uint result) {
-        if(isAdmin(msg.sender) && playerPlays(player)){
-            PlayerLocation memory infoLocation = playerLocations[player];
-            
-            bool set = idAndRoomWR[infoLocation.idRoom].tables[infoLocation.idTable - 1].playersAndResult[player].setResult;
-            
-            if(!set){
-                idAndRoomWR[infoLocation.idRoom].tables[infoLocation.idTable - 1].playersAndResult[player].setResult = true;
-                idAndRoomWR[infoLocation.idRoom].tables[infoLocation.idTable - 1].playersAndResult[player].result = result;
-            }
-            
-            SetResultPlayer(false, infoLocation.idRoom, infoLocation.idTable);
-            if(isGameOver(infoLocation.idRoom, infoLocation.idTable)){
-                SetResultPlayer(true, infoLocation.idRoom, infoLocation.idTable);
-                payRewards(infoLocation.idRoom, infoLocation.idTable);
-            }
-        }
-    }
-    
     function isGameOver(uint idRoom, uint idTable) internal returns(bool) {
-        if(idAndRoomWR[idRoom].tables[idTable - 1].closingTime < block.timestamp){
-            Table memory table = idAndRoomWR[idRoom].tables[idTable - 1];
-            for(uint i = 0; i < table.players.length; i++){
-                bool set = idAndRoomWR[idRoom].tables[idTable - 1].playersAndResult[table.players[i]].setResult;
+        if(idRoomIdTableAndTable[idRoom][idTable].closingTime < block.timestamp){
+            uint length = playersAndResultIndex[idRoom][idTable].length;
+            for(uint i = 0; i < length; i++){
+                bool set = playersAndResult[idRoom][idTable][playersAndResultIndex[idRoom][idTable][i]].setResult;
                 if(set == false){
                     return false;
                 }
@@ -225,94 +195,177 @@ contract StorageGame {
         }
         return true;
     }
+
+    event SetResultPlayer(uint idRoom, uint idTable);
+    function setResultPlayer(address player, uint result) {
+        if(isAdmin(msg.sender) && playerLocations[msg.sender].idRoom != 0 &&
+           playerLocations[msg.sender].idTable != 0){
+            
+            PlayerLocation memory infoLocation = playerLocations[player];
+            bool set = playersAndResult[infoLocation.idRoom][infoLocation.idTable][player].setResult;
+
+            if(!set){
+                playersAndResult[infoLocation.idRoom][infoLocation.idTable][player].setResult = true;
+                playersAndResult[infoLocation.idRoom][infoLocation.idTable][player].result = result;
+            }
+
+            if(isGameOver(infoLocation.idRoom, infoLocation.idTable)){
+                SetResultPlayer(infoLocation.idRoom, infoLocation.idTable);
+                payRewards(infoLocation.idRoom, infoLocation.idTable);
+            }
+        }
+    }
     
     event PayRewards(address player, uint value, uint place, uint idRoom, uint idTable);
     function payRewards(uint idRoom, uint idTable) internal {
-        sortResultsTable(idRoom, idTable);
-        PayRewards(addressesPlaceWinnings[i], value, i + 1, idRoom, idTable);
-        for(uint i = 0; i < addressesPlaceWinnings.length; i++){
-            uint value = idAndRoomWR[idRoom].tables[idTable - 1].playersAndResult[addressesPlaceWinnings[i]].reward;
-            // addressesPlaceWinnings[i].transfer(value);
-            PayRewards(addressesPlaceWinnings[i], value, i + 1, idRoom, idTable);
-        }
-    }
+
+        uint length = playersAndResultIndex[idRoom][idTable].length;
+        uint reward = idRoomIdTableAndTable[idRoom][idTable].bank / length;
     
-    function sortResultsTable(uint idRoom, uint idTable) internal {
-        delete addressesPlaceWinnings;
-        delete gameInfoPlayerPlaceWinnings;
-        
-        Table memory table = idAndRoomWR[idRoom].tables[idTable - 1];
-        
-        for(uint k = 0; k < table.players.length; k++){
-            gameInfoPlayerPlaceWinnings.push(idAndRoomWR[idRoom].tables[idTable - 1].playersAndResult[table.players[k]]);
-            addressesPlaceWinnings.push(table.players[k]);
-        }
-        
-        GameInfoPlayer memory gameInfoTemp;
-        address playerTemp;
-        for(uint i = 0; i < table.players.length; i++){
-            for(uint j = i + 1; j < table.players.length - (i + 1); j++){
-                if(gameInfoPlayerPlaceWinnings[i].result < gameInfoPlayerPlaceWinnings[j].result){
-                    gameInfoTemp = gameInfoPlayerPlaceWinnings[j];
-                    playerTemp = addressesPlaceWinnings[j];
-                    
-                    gameInfoPlayerPlaceWinnings[j] = gameInfoPlayerPlaceWinnings[i];
-                    addressesPlaceWinnings[j] = addressesPlaceWinnings[i];
-                    
-                    gameInfoPlayerPlaceWinnings[i] = gameInfoTemp;
-                    addressesPlaceWinnings[i] = playerTemp;
-                }
+        if(reward > 0){
+            for(uint i = 0; i < length; i++){
+                address addr = playersAndResultIndex[idRoom][idTable][i];
+                if(!addr.send(reward))
+                    throw;
+                PayRewards(playersAndResultIndex[idRoom][idTable][i], reward, i + 1, idRoom, idTable);
             }
         }
+        
+        deleteInfoTable(idRoom, idTable);
     }
     
-    function calculateAwards(uint idRoom, uint idTable) internal {
-        Table memory table = idAndRoomWR[idRoom].tables[idTable - 1];
-        
-        for(uint i = 0; i < idAndRoomWR[idRoom].awardsPlace.length; i++){
-            if(i <= idAndRoomWR[idRoom].tables[idTable - 1].players.length){
-                // idAndRoomWR[idRoom].tables[idTable - 1].players
-            }
+    function deleteInfoTable(uint idRoom, uint idTable) internal {
+        address[] memory addresses = playersAndResultIndex[idRoom][idTable];
+        for(uint i = 0; i < addresses.length; i++){
+            delete playersAndResult[idRoom][idTable][addresses[i]];
+            delete playerLocations[addresses[i]];
         }
+        delete playersAndResultIndex[idRoom][idTable];
     }
 ///////////////////////////////////////////////// Set result and pay rewards (end)
-}
 
 
-// function putPlayerTable(uint idRoom) payable{
-    //     if(!isNullRoomWithRates(idAndRoomWR[idRoom]) && msg.value >= idAndRoomWR[idRoom].betAmount){
-    //         RoomWithRates temp = idAndRoomWR[idRoom];
+
+///////////////////////////////////////////////// Delete room (begin)
+    event DeleteRoom(uint idRoom);
+    function deleteRoom(uint idRoom) {
+        if(isAdmin(msg.sender)){
+            delete awardsPlace[idRoom];
             
-    //         if(temp.tables.length == 0){
-    //             uint time = temp.tableLifeTime + block.timestamp;
-    //             temp.tables.push(createTable(temp.countIdTable, time));
-    //             temp.countIdTable++;
-    //             temp.tablesSize++;
-    //         }
+            uint[] memory tableIndex = idRoomIdTableAndTableIndex[idRoom];
+            for(uint i = 0; i < tableIndex.length; i++){
+                deleteInfoTable(idRoom, tableIndex[i]);
+                delete idRoomIdTableAndTable[idRoom][tableIndex[i]];
+            }
+            delete idRoomIdTableAndTableIndex[idRoom];
             
-    //         uint offset = temp.tables.length - 1;
-    //         if(checkValidTable(temp.tables[offset], temp.maxPlayers)){
-    //             temp.tables[offset].playersAndResult[msg.sender];
-    //             temp.tables[offset].players.push(msg.sender);
-    //             temp.tables[offset].playersAndResultSize++;
-                
-    //             temp.numberPlayersOpenTable++;
-    //             idAndRoomWR[idRoom] = temp;
-    //         } else {
-    //             temp.numberPlayersOpenTable = 0;
-    //             temp.tables.push(createTable(temp.countIdTable, temp.tableLifeTime + block.timestamp));
-    //             temp.countIdTable++;
-    //             temp.tablesSize++;
-                
-    //             temp.tables[offset + 1].playersAndResult[msg.sender];
-    //             temp.tables[offset + 1].players.push(msg.sender);
-    //             temp.tables[offset + 1].playersAndResultSize++;
-                
-    //             temp.numberPlayersOpenTable++;
-    //             idAndRoomWR[idRoom] = temp;
-    //         }
-    //         playerLocations[msg.sender] = PlayerLocation(temp.id, temp.tables[temp.tables.length - 1].id);
-    //         PutPlayerTable(msg.sender, temp.id, temp.tables[temp.tables.length - 1].id);
+            for(uint j = 0; j < idRoomAndRoomWRIndex.length; j++){
+                if(idRoomAndRoomWRIndex[j] == idRoom){
+                    delete idRoomAndRoomWRIndex[j];
+                }
+            }
+            delete idRoomAndRoomWR[idRoom];
+            DeleteRoom(idRoom);
+        }
+    }
+///////////////////////////////////////////////// Delete room (end)
+
+
+
+///////////////////////////////////////////////// Verification (begin)
+    // function checkValidTable(Table _table, uint _maxPlayers) internal returns (bool) {
+    //     if(_table.closingTime < block.timestamp || _table.players.length >= _maxPlayers){
+    //         return false;
     //     }
+    //     return true;
     // }
+    
+//     function isNullRoomWithRates(RoomWithRates a) internal returns (bool) {
+//         if(a.id == 0){
+//             return true;
+//         }
+//         return false;
+//     }
+    
+//     function playerPlays(address player) internal returns (bool) {
+//         PlayerLocation memory infoLoction = playerLocations[player];
+//         if(infoLoction.idRoom == 0 || infoLoction.idTable == 0){
+//             return false;
+//         }
+//         return true;
+//     }
+    
+//     function isGameOver(uint idRoom, uint idTable) internal returns(bool) {
+//         if(idAndRoomWR[idRoom].tables[idTable - 1].closingTime < block.timestamp){
+//             Table memory table = idAndRoomWR[idRoom].tables[idTable - 1];
+//             for(uint i = 0; i < table.players.length; i++){
+//                 bool set = idAndRoomWR[idRoom].tables[idTable - 1].playersAndResult[table.players[i]].setResult;
+//                 if(set == false){
+//                     return false;
+//                 }
+//             }
+//         } else {
+//             return false;
+//         }
+//         return true;
+//     }
+// ///////////////////////////////////////////////// Verification (end)
 
+
+
+// ///////////////////////////////////////////////// Preparation of results (begin)
+//     function preparationResults(uint idRoom, uint idTable) internal {
+//         sortResultsTable(idRoom, idTable);
+//         calculateAwards(idRoom, idTable);
+//     }
+
+//     function sortResultsTable(uint idRoom, uint idTable) internal {
+//         delete addressesPlaceWinnings;
+//         delete gameInfoPlayerPlaceWinnings;
+        
+//         Table memory table = idAndRoomWR[idRoom].tables[idTable - 1];
+        
+//         for(uint k = 0; k < table.players.length; k++){
+//             gameInfoPlayerPlaceWinnings.push(idAndRoomWR[idRoom].tables[idTable - 1].playersAndResult[table.players[k]]);
+//             addressesPlaceWinnings.push(table.players[k]);
+//         }
+        
+//         GameInfoPlayer memory gameInfoTemp;
+//         address playerTemp;
+//         for(uint i = 0; i < table.players.length; i++){
+//             for(uint j = i + 1; j < table.players.length - (i + 1); j++){
+//                 if(gameInfoPlayerPlaceWinnings[i].result < gameInfoPlayerPlaceWinnings[j].result){
+//                     gameInfoTemp = gameInfoPlayerPlaceWinnings[j];
+//                     playerTemp = addressesPlaceWinnings[j];
+                    
+//                     gameInfoPlayerPlaceWinnings[j] = gameInfoPlayerPlaceWinnings[i];
+//                     addressesPlaceWinnings[j] = addressesPlaceWinnings[i];
+                    
+//                     gameInfoPlayerPlaceWinnings[i] = gameInfoTemp;
+//                     addressesPlaceWinnings[i] = playerTemp;
+//                 }
+//             }
+//         }
+//     }
+    
+//     function calculateAwards(uint idRoom, uint idTable) internal {
+//         for(uint i = 0; i < idAndRoomWR[idRoom].awardsPlace.length; i++){
+//             uint summ = 0;
+//             if(i <= addressesPlaceWinnings.length){
+//                 uint value = (idAndRoomWR[idRoom].tables[idTable - 1].bank / 100) * idAndRoomWR[idRoom].awardsPlace[i];
+//                 address addrTemp = addressesPlaceWinnings[i];
+//                 idAndRoomWR[idRoom].tables[idTable - 1].playersAndResult[addrTemp].reward = value;
+//             } else {
+//                 summ += (idAndRoomWR[idRoom].tables[idTable - 1].bank / 100) * idAndRoomWR[idRoom].awardsPlace[i];
+//             }
+            
+//             uint additive = summ / idAndRoomWR[idRoom].tables[idTable - 1].players.length;
+            
+//             for(uint j = 0; j < addressesPlaceWinnings.length; j++){
+//                 address addr = addressesPlaceWinnings[j];
+//                 idAndRoomWR[idRoom].tables[idTable - 1].playersAndResult[addr].reward += additive;
+//             }
+//         }
+//     }
+// ///////////////////////////////////////////////// Preparation of results (end)
+}
