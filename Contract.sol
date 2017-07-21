@@ -29,17 +29,14 @@ contract StorageGame {
         uint idRoom;
         uint idTable;
     }
-    
-    
-    
+
 ///////////////////////////////////////////////// Storage (begin)
-    
     // Id room without bets
     uint public idRoomWithoutBets = 0;
     uint public bankRoomWithoutBets = 0;
 
     // Count rooms
-    uint countIdRoomWithRates = 1;
+    uint countIdRoom = 1;
     
     // Share awards
     mapping(uint => uint[]) public awardsPlace;
@@ -53,15 +50,13 @@ contract StorageGame {
     mapping(uint => mapping(uint => Table)) public idRoomIdTableAndTable;
     
     // Rooms
-    uint[] idRoomAndRoomWRIndex;
-    mapping(uint => RoomWithRates) public idRoomAndRoomWR;
+    uint[] idRoomAndRoomIndex;
+    mapping(uint => RoomWithRates) public idRoomAndRoom;
     
     // Player location
     mapping(address => PlayerLocation) public playerLocations;
 ///////////////////////////////////////////////// Storage (end)
 
-
-    
 ///////////////////////////////////////////////// Admin (begin)
     address[] public admins;
     
@@ -85,14 +80,11 @@ contract StorageGame {
     }
 ///////////////////////////////////////////////// Admin (end)
     
-    
-    
     function StorageGame() {
         admins.push(msg.sender);
     }
     
     function () payable {}
-    
     
 ///////////////////////////////////////////////// Create room and table (begin)
     event CreateRoomWithRates(uint id, uint betAmount, uint tableLifeTime, uint maxPlayers, uint fee);
@@ -103,25 +95,25 @@ contract StorageGame {
                 CreateRoomWithRates(0, 0, 0, 0, 0);
                 return;
             } else if(betAmount == 0 && maxPlayers == 0 && fee == 0){
-                idRoomWithoutBets = countIdRoomWithRates;
+                idRoomWithoutBets = countIdRoom;
                 bankRoomWithoutBets = msg.value;
             }
             
-            idRoomAndRoomWR[countIdRoomWithRates].id = countIdRoomWithRates;
-            idRoomAndRoomWR[countIdRoomWithRates].countIdTable = 1;
-            idRoomAndRoomWR[countIdRoomWithRates].betAmount = betAmount;
-            idRoomAndRoomWR[countIdRoomWithRates].tableLifeTime = tableLifeTime;
-            idRoomAndRoomWR[countIdRoomWithRates].maxPlayers = maxPlayers;
-            idRoomAndRoomWR[countIdRoomWithRates].numberPlayersOpenTable = 0;
-            idRoomAndRoomWR[countIdRoomWithRates].fee = fee;
-            idRoomAndRoomWRIndex.push(countIdRoomWithRates);
+            idRoomAndRoom[countIdRoom].id = countIdRoom;
+            idRoomAndRoom[countIdRoom].countIdTable = 1;
+            idRoomAndRoom[countIdRoom].betAmount = betAmount;
+            idRoomAndRoom[countIdRoom].tableLifeTime = tableLifeTime;
+            idRoomAndRoom[countIdRoom].maxPlayers = maxPlayers;
+            idRoomAndRoom[countIdRoom].numberPlayersOpenTable = 0;
+            idRoomAndRoom[countIdRoom].fee = fee;
+            idRoomAndRoomIndex.push(countIdRoom);
             
             for(uint i = 0; i < awards.length; i++){
-                awardsPlace[countIdRoomWithRates].push(awards[i]);
+                awardsPlace[countIdRoom].push(awards[i]);
             }
             
-            CreateRoomWithRates(countIdRoomWithRates, betAmount, tableLifeTime, maxPlayers, fee);
-            countIdRoomWithRates++;
+            CreateRoomWithRates(countIdRoom, betAmount, tableLifeTime, maxPlayers, fee);
+            countIdRoom++;
         }
     }
     
@@ -133,12 +125,10 @@ contract StorageGame {
     }
 ///////////////////////////////////////////////// Create room and table (end)
 
-
-
 ///////////////////////////////////////////////// Start game (begin)
     event PutPlayerTable(address player, uint idRoom, uint idTable);
     function putPlayerTable(uint idRoom) payable {
-        if(idRoomAndRoomWR[idRoom].id != 0){
+        if(idRoomAndRoom[idRoom].id != 0){
             if(isRoomWB(idRoom)){
                 putPlayerTableRoomWB(idRoom);
             } else {
@@ -148,21 +138,21 @@ contract StorageGame {
     }
 
     function putPlayerTableRoomWR(uint idRoom) internal {
-        if(msg.value >= idRoomAndRoomWR[idRoom].betAmount && idRoomAndRoomWR[idRoom].maxPlayers > 0 &&
+        if(msg.value >= idRoomAndRoom[idRoom].betAmount && idRoomAndRoom[idRoom].maxPlayers > 0 &&
           (playerLocations[msg.sender].idRoom == 0 && playerLocations[msg.sender].idTable == 0)){
             
-            uint value = msg.value - (msg.value/100) * idRoomAndRoomWR[idRoom].fee;
-            uint closingTime1 = block.timestamp + idRoomAndRoomWR[idRoom].tableLifeTime;
+            uint value = msg.value - (msg.value/100) * idRoomAndRoom[idRoom].fee;
+            uint closingTime1 = block.timestamp + idRoomAndRoom[idRoom].tableLifeTime;
             
             if(idRoomIdTableAndTableIndex[idRoom].length == 0){
-                uint idTableTemp = idRoomAndRoomWR[idRoom].countIdTable;
+                uint idTableTemp = idRoomAndRoom[idRoom].countIdTable;
                 idRoomIdTableAndTable[idRoom][idTableTemp] = createTable(idTableTemp, closingTime1);
                 idRoomIdTableAndTableIndex[idRoom].push(idTableTemp);
-                idRoomAndRoomWR[idRoom].countIdTable++;
+                idRoomAndRoom[idRoom].countIdTable++;
             }
             
             uint offset = idRoomIdTableAndTableIndex[idRoom].length;
-            uint maxPlayers = idRoomAndRoomWR[idRoom].maxPlayers;
+            uint maxPlayers = idRoomAndRoom[idRoom].maxPlayers;
             uint tablePlayers = playersAndResultIndex[idRoom][offset].length;
             uint closingTime2 = idRoomIdTableAndTable[idRoom][offset].closingTime;
             
@@ -173,15 +163,15 @@ contract StorageGame {
                 playersAndResult[idRoom][offset][msg.sender].reward = 0;
                 playersAndResult[idRoom][offset][msg.sender].created = true;
                 
-                idRoomAndRoomWR[idRoom].numberPlayersOpenTable++;
+                idRoomAndRoom[idRoom].numberPlayersOpenTable++;
                 
                 playersAndResultIndex[idRoom][offset].push(msg.sender);
             } else {
-                uint idTableTemp2 = idRoomAndRoomWR[idRoom].countIdTable;
+                uint idTableTemp2 = idRoomAndRoom[idRoom].countIdTable;
                 idRoomIdTableAndTable[idRoom][idTableTemp2] = createTable(idTableTemp2, closingTime1);
                 idRoomIdTableAndTableIndex[idRoom].push(idTableTemp2);
-                idRoomAndRoomWR[idRoom].countIdTable++;
-                idRoomAndRoomWR[idRoom].numberPlayersOpenTable++;
+                idRoomAndRoom[idRoom].countIdTable++;
+                idRoomAndRoom[idRoom].numberPlayersOpenTable = 1;
                 
                 idRoomIdTableAndTable[idRoom][idTableTemp2].bank += value;
                 playersAndResult[idRoom][idTableTemp2][msg.sender].setResult = false;
@@ -192,7 +182,7 @@ contract StorageGame {
                 playersAndResultIndex[idRoom][idTableTemp2].push(msg.sender);
             }
             
-            uint idroom = idRoomAndRoomWR[idRoom].id;
+            uint idroom = idRoomAndRoom[idRoom].id;
             uint idtable = idRoomIdTableAndTableIndex[idRoom].length;
             playerLocations[msg.sender] = PlayerLocation(idroom, idtable);
             PutPlayerTable(msg.sender, idroom, idtable);
@@ -202,14 +192,14 @@ contract StorageGame {
     function putPlayerTableRoomWB(uint idRoom) internal {
         if(playerLocations[msg.sender].idRoom == 0 && playerLocations[msg.sender].idTable == 0){
             
-            uint closingTime1 = block.timestamp + idRoomAndRoomWR[idRoom].tableLifeTime;
+            uint closingTime1 = block.timestamp + idRoomAndRoom[idRoom].tableLifeTime;
             
             if(idRoomIdTableAndTableIndex[idRoom].length == 0){
-                uint idTableTemp = idRoomAndRoomWR[idRoom].countIdTable;
+                uint idTableTemp = idRoomAndRoom[idRoom].countIdTable;
                 idRoomIdTableAndTable[idRoom][idTableTemp] = createTable(idTableTemp, closingTime1);
                 idRoomIdTableAndTableIndex[idRoom].push(idTableTemp);
                 idRoomIdTableAndTable[idRoom][idTableTemp].bank = bankRoomWithoutBets;
-                idRoomAndRoomWR[idRoom].countIdTable++;
+                idRoomAndRoom[idRoom].countIdTable++;
             }
             
             uint offset = idRoomIdTableAndTableIndex[idRoom].length;
@@ -220,11 +210,11 @@ contract StorageGame {
                 playersAndResult[idRoom][offset][msg.sender].result = 0;
                 playersAndResult[idRoom][offset][msg.sender].reward = 0;
                 playersAndResult[idRoom][offset][msg.sender].created = true;
-                idRoomAndRoomWR[idRoom].numberPlayersOpenTable++;
+                idRoomAndRoom[idRoom].numberPlayersOpenTable++;
                 playersAndResultIndex[idRoom][offset].push(msg.sender);
             }
             
-            uint idroom = idRoomAndRoomWR[idRoom].id;
+            uint idroom = idRoomAndRoom[idRoom].id;
             uint idtable = idRoomIdTableAndTableIndex[idRoom].length;
             playerLocations[msg.sender] = PlayerLocation(idroom, idtable);
             PutPlayerTable(msg.sender, idroom, idtable);
@@ -232,9 +222,7 @@ contract StorageGame {
     }
 ///////////////////////////////////////////////// Start game (end)
 
-
-
-///////////////////////////////////////////////// Set result and pay rewards (begin)
+///////////////////////////////////////////////// Verification (begin)
     function isGameOver(uint idRoom, uint idTable) internal returns(bool) {
         if(idRoomIdTableAndTable[idRoom][idTable].closingTime < block.timestamp){
             uint length = playersAndResultIndex[idRoom][idTable].length;
@@ -251,16 +239,18 @@ contract StorageGame {
     }
     
     function isRoomWB(uint idRoom) internal returns (bool) {
-        if(idRoomAndRoomWR[idRoom].betAmount == 0 && idRoomAndRoomWR[idRoom].maxPlayers == 0 && idRoomAndRoomWR[idRoom].fee == 0){
+        if(idRoomAndRoom[idRoom].betAmount == 0 && idRoomAndRoom[idRoom].maxPlayers == 0 && idRoomAndRoom[idRoom].fee == 0){
             return true;
         }
         return false;
     }
+///////////////////////////////////////////////// Verification (end)
 
+///////////////////////////////////////////////// Set result and pay rewards (begin)
     event SetResultPlayer(uint idRoom, uint idTable);
     function setResultPlayer(address player, uint result) {
-        if(isAdmin(msg.sender) && playerLocations[msg.sender].idRoom != 0 &&
-           playerLocations[msg.sender].idTable != 0){
+        if(isAdmin(msg.sender) && playerLocations[player].idRoom != 0 &&
+           playerLocations[player].idTable != 0){
             
             PlayerLocation memory infoLocation = playerLocations[player];
             bool set = playersAndResult[infoLocation.idRoom][infoLocation.idTable][player].setResult;
@@ -279,18 +269,21 @@ contract StorageGame {
     
     event PayRewards(address player, uint value, uint place, uint idRoom, uint idTable);
     function payRewards(uint idRoom, uint idTable) internal {
-
-        uint length = playersAndResultIndex[idRoom][idTable].length;
-        uint reward = idRoomIdTableAndTable[idRoom][idTable].bank / length;
-    
-        if(reward > 0){
-            for(uint i = 0; i < length; i++){
-                address addr = playersAndResultIndex[idRoom][idTable][i];
-                if(!addr.send(reward))
-                    throw;
-                PayRewards(playersAndResultIndex[idRoom][idTable][i], reward, i + 1, idRoom, idTable);
+        address[] memory addresses = playersAndResultIndex[idRoom][idTable];
+        
+        // Sorting results
+        address tempAddress;
+        for(uint j = 0; j < addresses.length; j++){
+            for(uint k = j + 1; k < addresses.length - (j + 1); k++){
+                if(playersAndResult[idRoom][idTable][addresses[j]].result < playersAndResult[idRoom][idTable][addresses[k]].result){
+                    tempAddress = addresses[j];
+                    addresses[j] = addresses[k];
+                    addresses[k] = tempAddress;
+                }
             }
         }
+        
+        transferRewards(addresses, idRoom, idTable);
         
         if(isRoomWB(idRoom)){
             deleteRoom(idRoom);
@@ -298,9 +291,27 @@ contract StorageGame {
             deleteInfoTable(idRoom, idTable);
         }
     }
+    
+    function transferRewards(address[] addresses, uint idRoom, uint idTable) internal {
+        uint additionalReward = 0;
+        for(uint l = 0; l < awardsPlace[idRoom].length; l++){
+            if(l < addresses.length){
+                uint reward = (idRoomIdTableAndTable[idRoom][idTable].bank / 100) * awardsPlace[idRoom][l];
+                if(!addresses[l].send(reward))
+                    throw;
+                continue;
+            }
+            additionalReward += (idRoomIdTableAndTable[idRoom][idTable].bank / 100) * awardsPlace[idRoom][l];
+        }
+        uint additionalRewardTransfer = additionalReward / addresses.length;
+        if(additionalRewardTransfer > 0){
+            for(uint t = 0; t < addresses.length; t++){
+                if(!addresses[t].send(additionalRewardTransfer))
+                    throw;
+            }
+        }
+    }
 ///////////////////////////////////////////////// Set result and pay rewards (end)
-
-
 
 ///////////////////////////////////////////////// Delete table and root (begin)
     function deleteInfoTable(uint idRoom, uint idTable) internal {
@@ -330,116 +341,15 @@ contract StorageGame {
             }
             delete idRoomIdTableAndTableIndex[idRoom];
             
-            for(uint j = 0; j < idRoomAndRoomWRIndex.length; j++){
-                if(idRoomAndRoomWRIndex[j] == idRoom){
-                    delete idRoomAndRoomWRIndex[j];
+            for(uint j = 0; j < idRoomAndRoomIndex.length; j++){
+                if(idRoomAndRoomIndex[j] == idRoom){
+                    delete idRoomAndRoomIndex[j];
                 }
             }
-            delete idRoomAndRoomWR[idRoom];
+            delete idRoomAndRoom[idRoom];
             DeleteRoom(idRoom);
         }
     }
 ///////////////////////////////////////////////// Delete table and root (end)
-
-
-
-///////////////////////////////////////////////// Verification (begin)
-    // function checkValidTable(Table _table, uint _maxPlayers) internal returns (bool) {
-    //     if(_table.closingTime < block.timestamp || _table.players.length >= _maxPlayers){
-    //         return false;
-    //     }
-    //     return true;
-    // }
-    
-//     function isNullRoomWithRates(RoomWithRates a) internal returns (bool) {
-//         if(a.id == 0){
-//             return true;
-//         }
-//         return false;
-//     }
-    
-//     function playerPlays(address player) internal returns (bool) {
-//         PlayerLocation memory infoLoction = playerLocations[player];
-//         if(infoLoction.idRoom == 0 || infoLoction.idTable == 0){
-//             return false;
-//         }
-//         return true;
-//     }
-    
-//     function isGameOver(uint idRoom, uint idTable) internal returns(bool) {
-//         if(idAndRoomWR[idRoom].tables[idTable - 1].closingTime < block.timestamp){
-//             Table memory table = idAndRoomWR[idRoom].tables[idTable - 1];
-//             for(uint i = 0; i < table.players.length; i++){
-//                 bool set = idAndRoomWR[idRoom].tables[idTable - 1].playersAndResult[table.players[i]].setResult;
-//                 if(set == false){
-//                     return false;
-//                 }
-//             }
-//         } else {
-//             return false;
-//         }
-//         return true;
-//     }
-// ///////////////////////////////////////////////// Verification (end)
-
-
-
-// ///////////////////////////////////////////////// Preparation of results (begin)
-//     function preparationResults(uint idRoom, uint idTable) internal {
-//         sortResultsTable(idRoom, idTable);
-//         calculateAwards(idRoom, idTable);
-//     }
-
-//     function sortResultsTable(uint idRoom, uint idTable) internal {
-//         delete addressesPlaceWinnings;
-//         delete gameInfoPlayerPlaceWinnings;
-        
-//         Table memory table = idAndRoomWR[idRoom].tables[idTable - 1];
-        
-//         for(uint k = 0; k < table.players.length; k++){
-//             gameInfoPlayerPlaceWinnings.push(idAndRoomWR[idRoom].tables[idTable - 1].playersAndResult[table.players[k]]);
-//             addressesPlaceWinnings.push(table.players[k]);
-//         }
-        
-//         GameInfoPlayer memory gameInfoTemp;
-//         address playerTemp;
-//         for(uint i = 0; i < table.players.length; i++){
-//             for(uint j = i + 1; j < table.players.length - (i + 1); j++){
-//                 if(gameInfoPlayerPlaceWinnings[i].result < gameInfoPlayerPlaceWinnings[j].result){
-//                     gameInfoTemp = gameInfoPlayerPlaceWinnings[j];
-//                     playerTemp = addressesPlaceWinnings[j];
-                    
-//                     gameInfoPlayerPlaceWinnings[j] = gameInfoPlayerPlaceWinnings[i];
-//                     addressesPlaceWinnings[j] = addressesPlaceWinnings[i];
-                    
-//                     gameInfoPlayerPlaceWinnings[i] = gameInfoTemp;
-//                     addressesPlaceWinnings[i] = playerTemp;
-//                 }
-//             }
-//         }
-//     }
-    
-//     function calculateAwards(uint idRoom, uint idTable) internal {
-//         for(uint i = 0; i < idAndRoomWR[idRoom].awardsPlace.length; i++){
-//             uint summ = 0;
-//             if(i <= addressesPlaceWinnings.length){
-//                 uint value = (idAndRoomWR[idRoom].tables[idTable - 1].bank / 100) * idAndRoomWR[idRoom].awardsPlace[i];
-//                 address addrTemp = addressesPlaceWinnings[i];
-//                 idAndRoomWR[idRoom].tables[idTable - 1].playersAndResult[addrTemp].reward = value;
-//             } else {
-//                 summ += (idAndRoomWR[idRoom].tables[idTable - 1].bank / 100) * idAndRoomWR[idRoom].awardsPlace[i];
-//             }
-            
-//             uint additive = summ / idAndRoomWR[idRoom].tables[idTable - 1].players.length;
-            
-//             for(uint j = 0; j < addressesPlaceWinnings.length; j++){
-//                 address addr = addressesPlaceWinnings[j];
-//                 idAndRoomWR[idRoom].tables[idTable - 1].playersAndResult[addr].reward += additive;
-//             }
-//         }
-//     }
-// ///////////////////////////////////////////////// Preparation of results (end)
 }
-
-
 
