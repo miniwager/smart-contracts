@@ -1,6 +1,6 @@
 pragma solidity ^0.4.0;
 
-contract StorageGame {
+contract Game {
     
     struct GameInfoPlayer {
         bool setResult;
@@ -78,9 +78,28 @@ contract StorageGame {
         }
         return access;
     }
+    
+    function withdrawalFunds(uint sum) {
+        if(isAdmin(msg.sender)){
+            uint value;
+            if(sum == 0){
+                value = this.balance;
+            } else {
+                value = sum;
+            }
+            if(!msg.sender.send(value))
+                    throw;
+        }
+    }
+    
+    function killGame(address addr){
+        if(isAdmin(msg.sender)){
+            suicide(addr);
+        }
+    }
 ///////////////////////////////////////////////// Admin (end)
     
-    function StorageGame() {
+    function Game() {
         admins.push(msg.sender);
     }
     
@@ -92,8 +111,7 @@ contract StorageGame {
         if(isAdmin(msg.sender)){
             
             if(betAmount == 0 && maxPlayers == 0 && fee == 0 && (idRoomWithoutBets != 0 || msg.value == 0)){
-                CreateRoomWithRates(0, 0, 0, 0, 0);
-                return;
+                throw;
             } else if(betAmount == 0 && maxPlayers == 0 && fee == 0){
                 idRoomWithoutBets = countIdRoom;
                 bankRoomWithoutBets = msg.value;
