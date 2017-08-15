@@ -1,14 +1,14 @@
 pragma solidity ^0.4.8;
 contract admins {
     
-    address[] public admins;
+    mapping(address => bool) public admins;
     address public serverAddress;
     
-    function admins() { admins.push(msg.sender); }
+    function admins() { admins[msg.sender] = true; }
     
     event AddAdmin(address newAdmin);
     function addAdmin(address a) onlyAdmin {
-        admins.push(a);
+        admins[a] = true;
         AddAdmin(a);
     }
     
@@ -19,15 +19,8 @@ contract admins {
     }
     
     modifier onlyAdmin {
-        bool access = false;
-        for(uint i = 0; i < admins.length; i++){
-            if(admins[i] == msg.sender){
-                access = true;
-                break;
-            }
-        }
-        // require(access);
-        if(!access) throw;
+        // require(admins[msg.sender]);
+        if(!admins[msg.sender]) throw;
         _;
     }
     
@@ -44,7 +37,7 @@ contract Game is admins {
         uint countIdTable;
         uint betAmount;
         uint maxPlayers;
-        uint fee;
+        // uint fee;
         uint[] awards;
         uint lastBusyTable;
     }
@@ -57,6 +50,8 @@ contract Game is admins {
 ///////////////////////////////////////////////// Storage (begin)
     uint countIdRoom = 1;
     
+    uint public fee;
+    
     uint[] public indexRooms;
     mapping(uint => Room) public rooms;
     
@@ -66,13 +61,21 @@ contract Game is admins {
     mapping(uint => mapping(uint => mapping(address => InformationsPlayer))) public results;
 ///////////////////////////////////////////////// Storage (end)
 ///////////////////////////////////////////////// Constructor (begin)
-    function Game(address servAddress) {
+    function Game(uint _fee, address servAddress) {
+        fee = _fee;
         if(servAddress == 0)
             serverAddress = msg.sender;
         else
             serverAddress = servAddress;
     }
 ///////////////////////////////////////////////// Constructor (end)
+///////////////////////////////////////////////// Set fee (begin)
+    function setFee(uint _fee) onlyAdmin {
+        // assert(_fee > 0);
+        if(_fee == 0) throw;
+        fee = _fee;
+    }
+///////////////////////////////////////////////// Set fee (end)
 ///////////////////////////////////////////////// Checks (begin)
     function checkPlayerForTable(address player, address[] table) internal returns(bool){
         for(uint i = 0; i < table.length; i++){
@@ -110,8 +113,8 @@ contract Game is admins {
     }
 ///////////////////////////////////////////////// Checks (end)
 ///////////////////////////////////////////////// Create room and table (begin)
-    event CreateRoomWithRates(uint id, uint betAmount, uint maxPlayers, uint fee);
-    function createRoomWithRates(uint betAmount, uint maxPlayers, uint fee, uint[] awards) onlyAdmin {
+    event CreateRoomWithRates(uint id, uint betAmount, uint maxPlayers);
+    function createRoomWithRates(uint betAmount, uint maxPlayers, uint[] awards) onlyAdmin {
         
         // assert(betAmount != 0);
         // assert(maxPlayers != 0);
@@ -121,12 +124,12 @@ contract Game is admins {
         rooms[countIdRoom].countIdTable = 1;
         rooms[countIdRoom].betAmount = betAmount;
         rooms[countIdRoom].maxPlayers = maxPlayers;
-        rooms[countIdRoom].fee = fee;
+        // rooms[countIdRoom].fee = fee;
         rooms[countIdRoom].awards = awards;
         
         indexRooms.push(countIdRoom);
         
-        CreateRoomWithRates(countIdRoom, betAmount, maxPlayers, fee);
+        CreateRoomWithRates(countIdRoom, betAmount, maxPlayers);
         countIdRoom++;
     }
     
@@ -138,6 +141,10 @@ contract Game is admins {
         // require(!checkPlayerPlays(idRoom, msg.sender));
         // require(idRoom != 0);
         if(msg.value < rooms[idRoom].betAmount || rooms[idRoom].countIdTable == 0 || idRoom == 0 || checkPlayerPlays(idRoom, msg.sender)) throw;
+        
+        if(msg.value > rooms[idRoom].betAmount){
+            if(!msg.sender.send(msg.value - rooms[idRoom].betAmount)) throw;
+        }
         
         for(uint j = rooms[idRoom].lastBusyTable; j < indexTables[idRoom].length; j++){
             if(!checkPlayerForTable(msg.sender, tables[idRoom][indexTables[idRoom][j]])){
@@ -197,7 +204,7 @@ contract Game is admins {
     }
     
     function transferRewards(address[] addresses, uint idRoom, uint idTable) internal {
-        uint bank = (rooms[idRoom].maxPlayers * rooms[idRoom].betAmount) - ((rooms[idRoom].maxPlayers * rooms[idRoom].betAmount) / 100) * rooms[idRoom].fee;
+        uint bank = (rooms[idRoom].maxPlayers * rooms[idRoom].betAmount) - ((rooms[idRoom].maxPlayers * rooms[idRoom].betAmount) * fee) / 100;
         
         uint additionalReward = 0;
         for(uint l = 0; l < rooms[idRoom].awards.length; l++){
