@@ -29,5 +29,5 @@
 3. При добавлении игрока за стол инициируется событие ```PutPlayerTable(address player, uint idRoom, uint idTable)```.
 4. При закрытии стола(окончание игры) инициируется событие ```PayRewards(address player, uint value, uint place, uint idRoom, uint idTable)```.
 5. При удалении комнаты инициируется событие ```DeleteRoom(uint idRoom)```.
-6. При установки комиссии ```SetFee(uint oldFee, uint newFee)```.
-7. При установки наград ```SetAwards(address oldAwards, address newAwards)```.
+6. При установке комиссии ```SetFee(uint oldFee, uint newFee)```.
+7. При установке наград ```SetAwards(address oldAwards, address newAwards)```.
