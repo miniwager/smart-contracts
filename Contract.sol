@@ -1,4 +1,46 @@
-pragma solidity ^0.4.8;
+pragma solidity ^0.4.11;
+
+contract Awards {
+    uint16[17] players_2      = [10000]; //(100*100)
+    uint16[17] players_3_10   = [5500,3500,1000];
+    uint16[17] players_11_20  = [5000,3000,1500,500];
+    uint16[17] players_21_30  = [4000,2400,1600,1000,600,400];
+    uint16[17] players_31_40  = [3000,2000,1200,925,750,625,525,425,325,225];
+    uint16[17] players_41_50  = [2750,1750,1150,850,725,575,450,300,200,150,120,100];
+    uint16[17] players_51_60  = [2500,1650,1100,800,700,550,450,300,175,125,95,75,60];
+    uint16[17] players_61_70  = [2500,1600,1050,800,700,550,450,300,175,125,95,75,50,40];
+    uint16[17] players_71_80  = [2500,1500,1000,750,650,550,450,300,175,125,95,75,50,35,30];
+    uint16[17] players_81_90  = [2500,1500,950,700,600,500,400,300,175,125,95,75,50,35,30,25];
+    uint16[17] players_91_100 = [2500,1450,925,675,575,475,375,275,175,125,95,75,50,35,30,25,20];
+    
+    function getAwards(uint maxPlayers) returns(uint16[17]) {
+        if(maxPlayers == 2)
+            return players_2;
+        if(maxPlayers >= 3 && maxPlayers <= 10)
+            return players_3_10;
+        if(maxPlayers >= 11 && maxPlayers <= 20)
+            return players_11_20;
+        if(maxPlayers >= 21 && maxPlayers <= 30)
+            return players_21_30;
+        if(maxPlayers >= 31 && maxPlayers <= 40)
+            return players_31_40;
+        if(maxPlayers >= 41 && maxPlayers <= 50)
+            return players_41_50;
+        if(maxPlayers >= 51 && maxPlayers <= 60)
+            return players_51_60;
+        if(maxPlayers >= 61 && maxPlayers <= 70)
+            return players_61_70;
+        if(maxPlayers >= 71 && maxPlayers <= 80)
+            return players_71_80;
+        if(maxPlayers >= 81 && maxPlayers <= 90)
+            return players_81_90;
+        if(maxPlayers >= 91 && maxPlayers <= 100)
+            return players_91_100;
+        assert(false);
+        // throw;
+    }
+}
+
 contract admins {
     
     mapping(address => bool) public admins;
@@ -19,14 +61,14 @@ contract admins {
     }
     
     modifier onlyAdmin {
-        // require(admins[msg.sender]);
-        if(!admins[msg.sender]) throw;
+        require(admins[msg.sender]);
+        // if(!admins[msg.sender]) throw;
         _;
     }
     
     modifier onlyServer {
-        // require(msg.sender == serverAddress);
-        if(msg.sender != serverAddress) throw;
+        require(msg.sender == serverAddress);
+        // if(msg.sender != serverAddress) throw;
         _;
     }
 }
@@ -37,7 +79,6 @@ contract Game is admins {
         uint countIdTable;
         uint betAmount;
         uint maxPlayers;
-        uint[] awards;
         uint lastBusyTable;
     }
     
@@ -50,6 +91,8 @@ contract Game is admins {
     uint public fee;
     uint accumulatedFunds;
     
+    Awards awardsObj;
+    
     mapping(uint => Room) public rooms;
     
     mapping(uint => uint[]) public indexTables;
@@ -60,21 +103,36 @@ contract Game is admins {
     mapping(uint => mapping(uint => mapping(address => InformationsPlayer))) public results;
 ///////////////////////////////////////////////// Storage (end)
 ///////////////////////////////////////////////// Constructor (begin)
-    function Game(uint _fee, address servAddress) {
+    function Game(uint _fee, address awardsAddress, address servAddress) {
+        assert(_fee > 0 && awardsAddress != 0);
+        
         fee = _fee;
+        awardsObj = Awards(awardsAddress);
+        
+        assert(awardsObj.getAwards(2)[0] != 0);
+        
         if(servAddress == 0)
             serverAddress = msg.sender;
         else
             serverAddress = servAddress;
     }
 ///////////////////////////////////////////////// Constructor (end)
-///////////////////////////////////////////////// Set fee (begin)
+///////////////////////////////////////////////// Set fee and awards (begin)
+    event SetFee(uint oldFee, uint newFee);
     function setFee(uint _fee) onlyAdmin {
-        // assert(_fee > 0);
-        if(_fee == 0) throw;
+        assert(_fee > 0);
+        // if(_fee == 0) throw;
+        SetFee(fee, _fee);
         fee = _fee;
     }
-///////////////////////////////////////////////// Set fee (end)
+    
+    event SetAwards(address oldAwards, address newAwards);
+    function setAwards(address newAwards) onlyAdmin {
+        SetAwards(awardsObj, newAwards);
+        awardsObj = Awards(newAwards);
+        assert(awardsObj.getAwards(2)[0] != 0);
+    }
+///////////////////////////////////////////////// Set fee and awards (end)
 ///////////////////////////////////////////////// Checks (begin)
     function checkPlayerForTable(address player, address[] table) internal returns(bool){
         for(uint i = 0; i < table.length; i++){
@@ -98,14 +156,13 @@ contract Game is admins {
 ///////////////////////////////////////////////// Checks (end)
 ///////////////////////////////////////////////// Create room and table (begin)
     event CreateRoomWithRates(uint id, uint betAmount, uint maxPlayers);
-    function createRoomWithRates(uint betAmount, uint maxPlayers, uint[] awards) onlyAdmin {
+    function createRoomWithRates(uint betAmount, uint maxPlayers) onlyAdmin {
         
-        // assert(betAmount != 0);
-        // assert(maxPlayers != 0);
-        // assert(awards.length != 0);
-        if(betAmount == 0 || maxPlayers == 0 || awards.length == 0) throw;
+        assert(betAmount != 0);
+        assert(maxPlayers != 0);
+        // if(betAmount == 0 || maxPlayers == 0) throw;
         
-        rooms[countIdRoom] = Room(1, betAmount, maxPlayers, awards, 0);
+        rooms[countIdRoom] = Room(1, betAmount, maxPlayers, 0);
         CreateRoomWithRates(countIdRoom, betAmount, maxPlayers);
         countIdRoom++;
     }
@@ -113,14 +170,15 @@ contract Game is admins {
     event PutPlayerTable(address player, uint idRoom, uint idTable);
     function putPlayerTableRoomWR(uint idRoom) payable {
         
-        // require(msg.value >= rooms[idRoom].betAmount);
-        // require(rooms[idRoom].countIdTable != 0);
-        // require(!playerPlays[msg.sender]);
-        // require(idRoom != 0);
-        if(msg.value < rooms[idRoom].betAmount || rooms[idRoom].countIdTable == 0 || idRoom == 0 || playerPlays[msg.sender]) throw;
+        require(msg.value >= rooms[idRoom].betAmount);
+        require(rooms[idRoom].countIdTable != 0);
+        require(!playerPlays[msg.sender]);
+        require(idRoom != 0);
+        // if(msg.value < rooms[idRoom].betAmount || rooms[idRoom].countIdTable == 0 || idRoom == 0 || playerPlays[msg.sender]) throw;
         
         if(msg.value > rooms[idRoom].betAmount){
-            if(!msg.sender.send(msg.value - rooms[idRoom].betAmount)) throw;
+            // if(!msg.sender.send(msg.value - rooms[idRoom].betAmount)) throw;
+            require(msg.sender.send(msg.value - rooms[idRoom].betAmount));
         }
         
         for(uint j = rooms[idRoom].lastBusyTable; j < indexTables[idRoom].length; j++){
@@ -147,9 +205,9 @@ contract Game is admins {
     event SetResultPlayer(address player, uint idRoom, uint idTable, uint result);
     function setResultPlayer(address player, uint idRoom, uint idTable, uint result) onlyServer {
         
-        // assert(checkPlayerForTable(msg.sender, tables[idRoom][idTable]));
-        // assert(results[idRoom][idTable][player].status != true);
-        if(!checkPlayerForTable(player, tables[idRoom][idTable]) || results[idRoom][idTable][player].status == true) throw;
+        assert(checkPlayerForTable(msg.sender, tables[idRoom][idTable]));
+        assert(results[idRoom][idTable][player].status != true);
+        // if(!checkPlayerForTable(player, tables[idRoom][idTable]) || results[idRoom][idTable][player].status == true) throw;
 
         results[idRoom][idTable][player].result = result;
         results[idRoom][idTable][player].status = true;
@@ -185,31 +243,21 @@ contract Game is admins {
         uint bank = (rooms[idRoom].maxPlayers * rooms[idRoom].betAmount) - ((rooms[idRoom].maxPlayers * rooms[idRoom].betAmount) * fee) / 10000;
         accumulatedFunds += ((rooms[idRoom].maxPlayers * rooms[idRoom].betAmount) * fee) / 10000;
         
-        uint additionalReward = 0;
-        for(uint l = 0; l < rooms[idRoom].awards.length; l++){
-            if(l < addresses.length){
-                // require(addresses[l].send((bank / 100) * rooms[idRoom].awards[l]));
-                if(!addresses[l].send((bank / 100) * rooms[idRoom].awards[l])) throw;
-                PayRewards(addresses[l], (bank / 100) * rooms[idRoom].awards[l], l+1, idRoom, idTable);
-                continue;
-            }
-            additionalReward += (bank / 100) * rooms[idRoom].awards[l];
-        }
-
-        if(additionalReward / addresses.length > 0){
-            for(uint t = 0; t < addresses.length; t++){
-                // require(addresses[t].send(additionalReward / addresses.length));
-                if(addresses[l].send(additionalReward / addresses.length)) throw;
-                PayRewards(addresses[l], additionalReward / addresses.length, 0, idRoom, idTable);
-            }
+        uint16[17] memory awards = awardsObj.getAwards(rooms[idRoom].maxPlayers);
+        
+        // for(uint l = 0; l < awards.length; l++){
+        for(uint l = 0; awards[l] != 0; l++){
+            require(addresses[l].send((bank * awards[l]) / 10000));
+            // if(!addresses[l].send((bank * awards[l]) / 10000)) throw;
+            PayRewards(addresses[l], (bank * awards[l]) / 10000, l+1, idRoom, idTable);
         }
     }
 ///////////////////////////////////////////////// Pay rewards (end)
 ///////////////////////////////////////////////// Delete room (begin)
     event DeleteRoom(uint idRoom);
     function deleteRoom(uint idRoom) onlyAdmin {
-        // assert(rooms[idRoom].countIdTable != 0);
-        if(rooms[idRoom].countIdTable == 0) throw;
+        assert(rooms[idRoom].countIdTable != 0);
+        // if(rooms[idRoom].countIdTable == 0) throw;
         
         delete rooms[idRoom];
         for(uint j = 0; j < indexTables[idRoom].length; j++){
@@ -226,17 +274,17 @@ contract Game is admins {
 ///////////////////////////////////////////////// Withdrawal funds (begin)
     event WithdrawalFunds(address admin, uint sum);
     function withdrawalFunds(uint sum) onlyAdmin {
-        // require(sum <= accumulatedFunds);
-        if(sum > accumulatedFunds) throw;
+        require(sum <= accumulatedFunds);
+        // if(sum > accumulatedFunds) throw;
         
         if(sum == 0){
-            // require(msg.sender.send(accumulatedFunds));
-            if(!msg.sender.send(accumulatedFunds)) throw;
+            require(msg.sender.send(accumulatedFunds));
+            // if(!msg.sender.send(accumulatedFunds)) throw;
             WithdrawalFunds(msg.sender, accumulatedFunds);
             accumulatedFunds = 0;
         } else {
-            // require(msg.sender.send(sum));
-            if(!msg.sender.send(sum)) throw;
+            require(msg.sender.send(sum));
+            // if(!msg.sender.send(sum)) throw;
             WithdrawalFunds(msg.sender, sum);
             accumulatedFunds -= sum;
         }
