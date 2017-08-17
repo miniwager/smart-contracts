@@ -1,7 +1,5 @@
 pragma solidity ^0.4.11;
 
-//0xaFb5F2300a78e0436B1F19e53B338412Ed6F2721
-
 contract Awards {
     mapping(uint8 => uint16[]) awards;
     function getAwards(uint maxPlayers) returns(uint16[17]);
@@ -46,6 +44,12 @@ contract Game is admins {
         uint lastBusyTable;
     }
     
+    struct RoomWithoutBets {
+        uint betAmount;
+        uint roomLifeTime;
+        uint roomClosingTime;
+    }
+    
     struct InformationsPlayer {
         bool status;
         uint result;
@@ -56,6 +60,10 @@ contract Game is admins {
     uint accumulatedFunds;
     
     Awards awardsObj;
+    
+    address[] public playersRoomWithoutBets;
+    RoomWithoutBets[] public roomWithoutBets;
+    mapping(address => InformationsPlayer) public playersInfoRoomWithoutBets;
     
     mapping(uint => Room) public rooms;
     
@@ -107,6 +115,16 @@ contract Game is admins {
     }
     
     function checkAllPlayersFinishedPlaying(uint idRoom, uint idTable) internal returns (bool) {
+        
+        if(idRoom == 0 &&  idTable == 0){
+            for(uint j = 0; j < playersRoomWithoutBets.length; j++){
+                if(playersInfoRoomWithoutBets[playersRoomWithoutBets[j]].status == false){
+                    return false;
+                }
+            }
+            return true;
+        }
+        
         if(rooms[idRoom].maxPlayers > tables[idRoom][idTable].length)
             return false;
         for(uint i = 0; i < tables[idRoom][idTable].length; i++){
@@ -128,11 +146,33 @@ contract Game is admins {
         countIdRoom++;
     }
     
+    event CreateRoomWithoutBets(uint betAmount, uint roomClosingTime);
+    function createRoomWithoutBets(uint roomLifeTime) onlyAdmin payable {
+        assert(roomLifeTime != 0);
+        assert(roomWithoutBets.length == 0);
+        require(msg.value > 0);
+        roomWithoutBets.push(RoomWithoutBets(msg.value, roomLifeTime, 0));
+        CreateRoomWithoutBets(msg.value, roomLifeTime);
+    }
+    
     event PutPlayerTable(address player, uint idRoom, uint idTable);
-    function putPlayerTableRoomWR(uint idRoom) payable {
+    function putPlayerTable(uint idRoom) payable {
+        require(!playerPlays[msg.sender]);
+        
+        if(idRoom == 0 && msg.value == 0){
+            assert(roomWithoutBets.length == 1);
+            require(msg.value == 0);
+            if(roomWithoutBets[0].roomClosingTime == 0)
+                roomWithoutBets[0].roomClosingTime = block.timestamp + roomWithoutBets[0].roomLifeTime;
+            assert(roomWithoutBets[0].roomClosingTime > block.timestamp);
+            playersRoomWithoutBets.push(msg.sender);
+            playersInfoRoomWithoutBets[msg.sender] = InformationsPlayer(false, 0);
+            PutPlayerTable(msg.sender, 0, 0);
+            return;
+        }
+        
         require(msg.value >= rooms[idRoom].betAmount);
         require(rooms[idRoom].countIdTable != 0);
-        require(!playerPlays[msg.sender]);
         require(idRoom != 0);
 
         if(msg.value > rooms[idRoom].betAmount)
@@ -161,6 +201,21 @@ contract Game is admins {
 ///////////////////////////////////////////////// Set result (begin)
     event SetResultPlayer(address player, uint idRoom, uint idTable, uint result);
     function setResultPlayer(address player, uint idRoom, uint idTable, uint result) onlyServer {
+        
+        assert(player != 0);
+        
+        if(idRoom == 0 && idTable == 0){
+            assert(checkPlayerForTable(player, playersRoomWithoutBets));
+            assert(playersInfoRoomWithoutBets[player].status != true);
+            playersInfoRoomWithoutBets[player].result = result;
+            playersInfoRoomWithoutBets[player].status = true;
+            SetResultPlayer(player, 0, 0, result);
+            if(roomWithoutBets[0].roomClosingTime < block.timestamp && checkAllPlayersFinishedPlaying(0, 0)){
+                payRewards();
+            }
+            return;
+        }
+        
         assert(checkPlayerForTable(player, tables[idRoom][idTable]));
         assert(results[idRoom][idTable][player].status != true);
 
@@ -194,11 +249,34 @@ contract Game is admins {
         transferRewards(addresses, idRoom, idTable);
     }
     
-    function transferRewards(address[] addresses, uint idRoom, uint idTable) internal {
-        uint bank = (rooms[idRoom].maxPlayers * rooms[idRoom].betAmount) - ((rooms[idRoom].maxPlayers * rooms[idRoom].betAmount) * fee) / 10000;
-        accumulatedFunds += ((rooms[idRoom].maxPlayers * rooms[idRoom].betAmount) * fee) / 10000;
+    function payRewards() internal {
+        address[] memory addresses = playersRoomWithoutBets;
         
-        uint16[17] memory awards = awardsObj.getAwards(rooms[idRoom].maxPlayers);
+        // Sorting results
+        address tempAddress;
+        for(uint j = 0; j < addresses.length; j++){
+            for(uint k = j + 1; k < addresses.length - (j + 1); k++){
+                if(playersInfoRoomWithoutBets[addresses[j]].result < playersInfoRoomWithoutBets[addresses[k]].result){
+                    tempAddress = addresses[j];
+                    addresses[j] = addresses[k];
+                    addresses[k] = tempAddress;
+                }
+            }
+        }
+        transferRewards(addresses, 0, 0);
+    }
+    
+    function transferRewards(address[] addresses, uint idRoom, uint idTable) internal {
+        uint bank;
+        uint16[17] memory awards;
+        if(idRoom != 0 && idTable != 0){
+            bank = (rooms[idRoom].maxPlayers * rooms[idRoom].betAmount) - ((rooms[idRoom].maxPlayers * rooms[idRoom].betAmount) * fee) / 10000;
+            accumulatedFunds += ((rooms[idRoom].maxPlayers * rooms[idRoom].betAmount) * fee) / 10000;
+            awards = awardsObj.getAwards(rooms[idRoom].maxPlayers);
+        } else {
+            bank = roomWithoutBets[0].betAmount;
+            awards = awardsObj.getAwards(playersRoomWithoutBets.length);
+        }
         
         for(uint l = 0; awards[l] != 0; l++){
             require(addresses[l].send((bank * awards[l]) / 10000));
@@ -240,3 +318,4 @@ contract Game is admins {
     }
 ///////////////////////////////////////////////// Withdrawal funds (end)
 }
+
