@@ -161,7 +161,7 @@ contract Game is admins {
 ///////////////////////////////////////////////// Set result (begin)
     event SetResultPlayer(address player, uint idRoom, uint idTable, uint result);
     function setResultPlayer(address player, uint idRoom, uint idTable, uint result) onlyServer {
-        assert(checkPlayerForTable(msg.sender, tables[idRoom][idTable]));
+        assert(checkPlayerForTable(player, tables[idRoom][idTable]));
         assert(results[idRoom][idTable][player].status != true);
 
         results[idRoom][idTable][player].result = result;
