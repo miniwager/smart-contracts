@@ -1,5 +1,6 @@
 ### Загрузка контракта:
-При загрузке контракта конструктор принимает комиссию и адрес сервера. Если адрес не передан сервером будет ```sender```.
+В первую очередь загружается контракт с наградами.
+При загрузке контракта конструктор принимает комиссию, адрес контракта с наградами и адрес сервера. Если адрес сервера не передан сервером будет ```sender```.
 
 ### Администрирование:
 При создании контракта администратором становиться ```sender```.
@@ -20,6 +21,7 @@
 5. ```putPlayerTableRoomWR(uint idRoom) payable``` - посадить игрока за стол.
 6. ```setResultPlayer(address player, uint idRoom, uint idTable, uint result)``` - записать результат игрока.
 7. ```deleteRoom(uint idRoom)``` - удалить комнату.
+8. ```setAwards(address newAwards)``` - изменить награды.
 
 ### События:
 1. При добавлении администратора инициируется событие ```AddAdmin(address)```.
@@ -27,4 +29,5 @@
 3. При добавлении игрока за стол инициируется событие ```PutPlayerTable(address player, uint idRoom, uint idTable)```.
 4. При закрытии стола(окончание игры) инициируется событие ```PayRewards(address player, uint value, uint place, uint idRoom, uint idTable)```.
 5. При удалении комнаты инициируется событие ```DeleteRoom(uint idRoom)```.
-
+6. При установке комиссии ```SetFee(uint oldFee, uint newFee)```.
+7. При установке наград ```SetAwards(address oldAwards, address newAwards)```.
