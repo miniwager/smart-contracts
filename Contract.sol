@@ -134,7 +134,7 @@ contract Game is admins {
         countIdRoom++;
     }
     
-    event CreateRoomWithoutBets(uint betAmount, uint roomClosingTime);
+    event CreateRoomWithoutBets(uint betAmount, uint roomLifeTime);
     function createRoomWithoutBets(uint roomLifeTime) onlyAdmin payable {
         assert(roomLifeTime != 0);
         assert(roomWithoutBets.length == 0);
@@ -269,7 +269,7 @@ contract Game is admins {
     }
     
     event DeleteRoomWithoutBets(uint idRoom);
-    function deleteRoomWithoutBets() onlyAdmin {
+    function deleteRoomWithoutBets() internal {
         assert(roomWithoutBets.length != 0);
         
         delete roomWithoutBets;
@@ -297,6 +297,7 @@ contract Game is admins {
     }
 ///////////////////////////////////////////////// Withdrawal funds (end)
 ///////////////////////////////////////////////// Close RoomWithoutBets (begin)
+    event CloseRoomWithoutBetsForcefully(uint idRoom);
     function closeRoomWithoutBetsForcefully() onlyAdmin {
         assert(roomWithoutBets.length > 0);
         
@@ -305,6 +306,7 @@ contract Game is admins {
             playerPlays[tables[0][0][k]] = false;
         }
         deleteRoomWithoutBets();
+        CloseRoomWithoutBetsForcefully(0);
     }
 ///////////////////////////////////////////////// Close RoomWithoutBets (end)
 }
