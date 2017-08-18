@@ -171,7 +171,8 @@ contract Game is admins {
             require(msg.sender.send(msg.value - rooms[idRoom].betAmount));
         
         for(uint j = rooms[idRoom].lastBusyTable; j < indexTables[idRoom].length; j++){
-            if(!checkPlayerForTable(msg.sender, tables[idRoom][indexTables[idRoom][j]])){
+            if(!checkPlayerForTable(msg.sender, tables[idRoom][indexTables[idRoom][j]]) &&
+            tables[idRoom][indexTables[idRoom][j]].length < rooms[idRoom].maxPlayers){
                 tables[idRoom][indexTables[idRoom][j]].push(msg.sender);
                 if(tables[idRoom][indexTables[idRoom][j]].length == rooms[idRoom].maxPlayers)
                     rooms[idRoom].lastBusyTable++;
@@ -205,6 +206,7 @@ contract Game is admins {
         if(checkAllPlayersFinishedPlaying(idRoom, idTable)){
             if(idRoom != 0 && idTable != 0){
                 payRewards(idRoom, idTable);
+                return;
             }
             if(roomWithoutBets[0].roomClosingTime < block.timestamp){
                 payRewards(idRoom, idTable);
