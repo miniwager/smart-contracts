@@ -61,7 +61,7 @@ contract Game is admins {
     
     Awards awardsObj;
     
-    RoomWithoutBets[] public roomWithoutBets;
+    RoomWithoutBets public roomWithoutBets;
 
     mapping(uint => Room) public rooms;
     
@@ -115,8 +115,12 @@ contract Game is admins {
     function checkAllPlayersFinishedPlaying(uint idRoom, uint idTable) internal returns (bool) {
         if((idRoom != 0 && idTable != 0) && rooms[idRoom].maxPlayers > tables[idRoom][idTable].length)
             return false;
+            
+        if((idRoom == 0 && idTable == 0) && roomWithoutBets.roomClosingTime > block.timestamp)
+            return false;
+            
         for(uint i = 0; i < tables[idRoom][idTable].length; i++){
-            if(results[idRoom][idTable][tables[idRoom][idTable][i]].status == false){
+            if(!results[idRoom][idTable][tables[idRoom][idTable][i]].status){
                 return false;
             }
         }
@@ -126,8 +130,8 @@ contract Game is admins {
 ///////////////////////////////////////////////// Create room and table (begin)
     event CreateRoomWithRates(uint id, uint betAmount, uint maxPlayers);
     function createRoomWithRates(uint betAmount, uint maxPlayers) onlyAdmin {
-        assert(betAmount != 0);
-        assert(maxPlayers > 1);
+        require(betAmount != 0);
+        require(maxPlayers > 1);
         
         rooms[countIdRoom] = Room(1, betAmount, maxPlayers, 0);
         CreateRoomWithRates(countIdRoom, betAmount, maxPlayers);
@@ -136,33 +140,16 @@ contract Game is admins {
     
     event CreateRoomWithoutBets(uint betAmount, uint roomLifeTime);
     function createRoomWithoutBets(uint roomLifeTime) onlyAdmin payable {
-        assert(roomLifeTime != 0);
-        assert(roomWithoutBets.length == 0);
+        require(roomLifeTime > 0);
+        require(roomWithoutBets.betAmount == 0);
         require(msg.value > 0);
-        roomWithoutBets.push(RoomWithoutBets(msg.value, roomLifeTime, 0));
+        roomWithoutBets = RoomWithoutBets(msg.value, roomLifeTime, 0);
         CreateRoomWithoutBets(msg.value, roomLifeTime);
     }
     
     event PutPlayerTable(address player, uint idRoom, uint idTable);
     function putPlayerTable(uint idRoom) payable {
         require(!playerPlays[msg.sender]);
-        
-        if(idRoom == 0){
-            assert(roomWithoutBets.length == 1);
-            assert(msg.value == 0);
-            assert(!checkPlayerForTable(msg.sender, tables[0][0]));
-            
-            if(roomWithoutBets[0].roomClosingTime == 0)
-                roomWithoutBets[0].roomClosingTime = block.timestamp + roomWithoutBets[0].roomLifeTime;
-            
-            assert(roomWithoutBets[0].roomClosingTime > block.timestamp);
-            
-            tables[0][0].push(msg.sender);
-            playerPlays[msg.sender] = true;
-            PutPlayerTable(msg.sender, 0, 0);
-            return;
-        }
-        
         require(msg.value >= rooms[idRoom].betAmount);
         require(rooms[idRoom].countIdTable != 0);
         require(idRoom != 0);
@@ -190,13 +177,28 @@ contract Game is admins {
             rooms[idRoom].lastBusyTable++;
         playerPlays[msg.sender] = true;
     }
+    
+    function putPlayerTableRWB(address player) onlyServer {
+        require(!playerPlays[player]);
+        require(roomWithoutBets.betAmount > 0);
+        require(!checkPlayerForTable(player, tables[0][0]));
+        
+        if(roomWithoutBets.roomClosingTime == 0)
+            roomWithoutBets.roomClosingTime = block.timestamp + roomWithoutBets.roomLifeTime;
+            
+        assert(roomWithoutBets.roomClosingTime > block.timestamp);
+        
+        tables[0][0].push(player);
+        playerPlays[player] = true;
+        PutPlayerTable(player, 0, 0);
+    }
 ///////////////////////////////////////////////// Create room and table (end)
 ///////////////////////////////////////////////// Set result (begin)
     event SetResultPlayer(address player, uint idRoom, uint idTable, uint result);
     function setResultPlayer(address player, uint idRoom, uint idTable, uint result) onlyServer {
-        assert(player != 0);
-        assert(checkPlayerForTable(player, tables[idRoom][idTable]));
-        assert(results[idRoom][idTable][player].status != true);
+        require(player != 0);
+        require(checkPlayerForTable(player, tables[idRoom][idTable]));
+        require(results[idRoom][idTable][player].status != true);
 
         results[idRoom][idTable][player].result = result;
         results[idRoom][idTable][player].status = true;
@@ -204,13 +206,9 @@ contract Game is admins {
         playerPlays[player] = false;
         
         if(checkAllPlayersFinishedPlaying(idRoom, idTable)){
-            if(idRoom != 0 && idTable != 0){
-                payRewards(idRoom, idTable);
-                return;
-            }
-            if(roomWithoutBets[0].roomClosingTime < block.timestamp){
-                payRewards(idRoom, idTable);
-                deleteRoomWithoutBets();
+            payRewards(idRoom, idTable);
+            if(idRoom == 0 && idTable == 0){
+                deleteRoomWithoutBets();            
             }
         }
     }
@@ -243,7 +241,7 @@ contract Game is admins {
             accumulatedFunds += ((rooms[idRoom].maxPlayers * rooms[idRoom].betAmount) * fee) / 10000;
             awards = awardsObj.getAwards(rooms[idRoom].maxPlayers);
         } else {
-            bank = roomWithoutBets[0].betAmount;
+            bank = roomWithoutBets.betAmount;
             awards = awardsObj.getAwards(tables[0][0].length);
         }
         
@@ -256,7 +254,7 @@ contract Game is admins {
 ///////////////////////////////////////////////// Delete room (begin)
     event DeleteRoomWithRates(uint idRoom);
     function deleteRoomWithRates(uint idRoom) onlyAdmin {
-        assert(rooms[idRoom].countIdTable != 0);
+        require(rooms[idRoom].countIdTable != 0);
 
         delete rooms[idRoom];
         for(uint j = 0; j < indexTables[idRoom].length; j++){
@@ -272,7 +270,7 @@ contract Game is admins {
     
     event DeleteRoomWithoutBets(uint idRoom);
     function deleteRoomWithoutBets() internal {
-        assert(roomWithoutBets.length != 0);
+        assert(roomWithoutBets.betAmount > 0);
         
         delete roomWithoutBets;
         for(uint i = 0; i < tables[0][0].length; i++){
@@ -301,7 +299,9 @@ contract Game is admins {
 ///////////////////////////////////////////////// Close RoomWithoutBets (begin)
     event CloseRoomWithoutBetsForcefully(uint idRoom);
     function closeRoomWithoutBetsForcefully() onlyAdmin {
-        assert(roomWithoutBets.length > 0);
+        require(roomWithoutBets.betAmount > 0);
+        require(roomWithoutBets.roomClosingTime <= block.timestamp);
+        require(checkAllPlayersFinishedPlaying(0,0));
         
         payRewards(0, 0);
         for(uint k = 0; k < tables[0][0].length; k++){
