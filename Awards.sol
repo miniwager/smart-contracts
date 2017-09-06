@@ -19,9 +19,9 @@ contract Awards {
     }
     
     function getAwards(uint maxPlayers) returns(uint16[17]) {
-        assert(maxPlayers >= 2);
+        assert(maxPlayers > 0);
         
-        if(maxPlayers == 2)
+        if(maxPlayers <= 2)
             return awards[0];
         
         uint index = ((maxPlayers - 1) / 10) + 1;
