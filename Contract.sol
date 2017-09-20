@@ -221,7 +221,7 @@ contract Game is admins {
         // Sorting results
         address tempAddress;
         for(uint j = 0; j < addresses.length; j++){
-            for(uint k = j + 1; k < addresses.length - (j + 1); k++){
+            for(uint k = j + 1; k < addresses.length; k++){
                 if(results[idRoom][idTable][addresses[j]].result < results[idRoom][idTable][addresses[k]].result){
                     tempAddress = addresses[j];
                     addresses[j] = addresses[k];
@@ -312,3 +312,4 @@ contract Game is admins {
     }
 ///////////////////////////////////////////////// Close RoomWithoutBets (end)
 }
+
