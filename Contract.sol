@@ -245,9 +245,34 @@ contract Game is admins {
             awards = awardsObj.getAwards(tables[0][0].length);
         }
         
-        for(uint l = 0; awards[l] != 0; l++){
+        for(uint l = 0; l < awards.length && awards[l] != 0; l++){
+            uint value = 0;
+            uint count = 1;
+            
+            if(results[idRoom][idTable][addresses[l]].result == results[idRoom][idTable][addresses[l + 1]].result){
+                value += (bank * awards[l]) / 10000;
+                for(uint t = l + 1; t < addresses.length; t++){
+                    if(results[idRoom][idTable][addresses[l]].result == results[idRoom][idTable][addresses[t]].result){
+                        if(l < awards.length && awards[t] != 0)
+                            value += (bank * awards[t]) / 10000;
+                        count++;
+                    } else {
+                        break;
+                    }
+                }
+            }
+            
+            if(value / count > 0){
+                for(uint q = l; q < l + count; q++){
+                    assert(addresses[q].send(value / count));
+                    PayRewards(addresses[q], value / count, q + 1, idRoom, idTable);
+                }
+                l += count - 1;
+                continue;
+            }
+        
             assert(addresses[l].send((bank * awards[l]) / 10000));
-            PayRewards(addresses[l], (bank * awards[l]) / 10000, l+1, idRoom, idTable);
+            PayRewards(addresses[l], (bank * awards[l]) / 10000, l + 1, idRoom, idTable);
         }
     }
 ///////////////////////////////////////////////// Pay rewards (end)
@@ -312,4 +337,5 @@ contract Game is admins {
     }
 ///////////////////////////////////////////////// Close RoomWithoutBets (end)
 }
+
 
