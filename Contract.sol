@@ -263,6 +263,8 @@ contract Game is admins {
                         assert(addresses[q].send(value / count));
                         PayRewards(addresses[q], value / count, q + 1, idRoom, idTable);
                     }
+                } else {
+                    accumulatedFunds += value;
                 }
                 l += count - 1;
             } else {
