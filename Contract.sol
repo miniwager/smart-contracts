@@ -242,21 +242,22 @@ contract Game is admins {
         uint[] memory results = tables[idRoom][idTable].results[0];
         address[] memory addresses = tables[idRoom][idTable].players[0];
         
-        // Sorting results
-        address tempAddress;
-        uint tempResult;
-        for(uint j = 0; j < results.length; j++){
-            for(uint k = j + 1; k < results.length; k++){
-                if(results[j] < results[k]){
-                    tempAddress = addresses[j];
-                    addresses[j] = addresses[k];
-                    addresses[k] = tempAddress;
-                    
-                    tempResult = results[j];
-                    results[j] = results[k];
-                    results[k] = tempResult;
-                }
+        uint i;
+        uint key;
+        address keyAddr;
+        uint j;
+    
+        for(i = 1; i < results.length; i++ ) {
+            key = results[i];
+            keyAddr = addresses[i];
+            
+            for(j = i; j > 0 && results[j-1] < key; j-- ) {
+                results[j] = results[j-1];
+                addresses[j] = addresses[j-1];
             }
+    
+            results[j] = key;
+            addresses[j] = keyAddr;
         }
         
         transferRewards(results, addresses, idRoom, idTable);
