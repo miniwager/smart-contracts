@@ -5,12 +5,12 @@ contract Awards {
     function getAwards(uint maxPlayers) returns(uint16[17]);
 }
 
-contract admins {
+contract Admins {
     
     mapping(address => bool) public admins;
     address public serverAddress;
     
-    function admins() { admins[msg.sender] = true; }
+    function Admins() { admins[msg.sender] = true; }
     
     event AddAdmin(address newAdmin);
     function addAdmin(address a) onlyAdmin {
@@ -35,7 +35,7 @@ contract admins {
     }
 }
 
-contract Game is admins {
+contract Game is Admins {
     
     struct Room {
         uint countIdTable;
@@ -66,12 +66,9 @@ contract Game is admins {
     mapping(uint => Room) public rooms;
     
     struct Table {
-        // address[] players;
-        // uint[] results;
-        // bool[] status;
-        mapping(uint => address[]) players;
-        mapping(uint => uint[]) results;
-        mapping(uint => bool[]) status;
+        address[] players;
+        uint[] results;
+        bool[] status;
         uint countResults;
     }
     
@@ -113,7 +110,7 @@ contract Game is admins {
     }
 ///////////////////////////////////////////////// Set fee and awards (end)
 ///////////////////////////////////////////////// Checks (begin)
-    function checkPlayerForTable(address player, address[] table) internal returns(bool){
+    function checkPlayerForTable(address player, address[] table) constant internal returns(bool){
         for(uint i = 0; i < table.length; i++){
             if(table[i] == player){
                 return true;
@@ -122,14 +119,14 @@ contract Game is admins {
         return false;
     }
     
-    function checkAllPlayersFinishedPlaying(uint idRoom, uint idTable) internal returns (bool) {
-        if((idRoom != 0 && idTable != 0) && rooms[idRoom].maxPlayers > tables[idRoom][idTable].players[0].length)
+    function checkAllPlayersFinishedPlaying(uint idRoom, uint idTable) constant internal returns (bool) {
+        if((idRoom != 0 && idTable != 0) && rooms[idRoom].maxPlayers > tables[idRoom][idTable].players.length)
             return false;
             
         if((idRoom == 0 && idTable == 0) && roomWithoutBets.roomClosingTime > block.timestamp)
             return false;
            
-        if(tables[idRoom][idTable].players[0].length != tables[idRoom][idTable].countResults)
+        if(tables[idRoom][idTable].players.length != tables[idRoom][idTable].countResults)
             return false;
         
         return true;
@@ -166,15 +163,15 @@ contract Game is admins {
             require(msg.sender.send(msg.value - rooms[idRoom].betAmount));
         
         for(uint j = rooms[idRoom].lastBusyTable; j < indexTables[idRoom].length; j++){
-            if(!checkPlayerForTable(msg.sender, tables[idRoom][indexTables[idRoom][j]].players[0]) &&
-            tables[idRoom][indexTables[idRoom][j]].players[0].length < rooms[idRoom].maxPlayers){
-                tables[idRoom][indexTables[idRoom][j]].players[0].push(msg.sender);
+            if(!checkPlayerForTable(msg.sender, tables[idRoom][indexTables[idRoom][j]].players) &&
+            tables[idRoom][indexTables[idRoom][j]].players.length < rooms[idRoom].maxPlayers){
+                tables[idRoom][indexTables[idRoom][j]].players.push(msg.sender);
                 
-                tables[idRoom][indexTables[idRoom][j]].results[0].push(0);
-                tables[idRoom][indexTables[idRoom][j]].status[0].push(false);
-                playerIndex[idRoom][indexTables[idRoom][j]][msg.sender] = tables[idRoom][indexTables[idRoom][j]].players[0].length - 1;
+                tables[idRoom][indexTables[idRoom][j]].results.push(0);
+                tables[idRoom][indexTables[idRoom][j]].status.push(false);
+                playerIndex[idRoom][indexTables[idRoom][j]][msg.sender] = tables[idRoom][indexTables[idRoom][j]].players.length - 1;
                 
-                if(tables[idRoom][indexTables[idRoom][j]].players[0].length == rooms[idRoom].maxPlayers)
+                if(tables[idRoom][indexTables[idRoom][j]].players.length == rooms[idRoom].maxPlayers)
                     rooms[idRoom].lastBusyTable++;
                 PutPlayerTable(msg.sender, idRoom, indexTables[idRoom][j]);
                 playerPlays[msg.sender] = true;
@@ -182,16 +179,16 @@ contract Game is admins {
             }
         }
         
-        tables[idRoom][rooms[idRoom].countIdTable].players[0].push(msg.sender);
+        tables[idRoom][rooms[idRoom].countIdTable].players.push(msg.sender);
         
-        tables[idRoom][rooms[idRoom].countIdTable].results[0].push(0);
-        tables[idRoom][rooms[idRoom].countIdTable].status[0].push(false);
-        playerIndex[idRoom][rooms[idRoom].countIdTable][msg.sender] = tables[idRoom][rooms[idRoom].countIdTable].players[0].length - 1;
+        tables[idRoom][rooms[idRoom].countIdTable].results.push(0);
+        tables[idRoom][rooms[idRoom].countIdTable].status.push(false);
+        playerIndex[idRoom][rooms[idRoom].countIdTable][msg.sender] = tables[idRoom][rooms[idRoom].countIdTable].players.length - 1;
         
         indexTables[idRoom].push(rooms[idRoom].countIdTable);
         PutPlayerTable(msg.sender, idRoom, rooms[idRoom].countIdTable);
         rooms[idRoom].countIdTable++;
-        if(tables[idRoom][rooms[idRoom].countIdTable].players[0].length == rooms[idRoom].maxPlayers)
+        if(tables[idRoom][rooms[idRoom].countIdTable].players.length == rooms[idRoom].maxPlayers)
             rooms[idRoom].lastBusyTable++;
         playerPlays[msg.sender] = true;
     }
@@ -199,14 +196,19 @@ contract Game is admins {
     function putPlayerTableRWB(address player) onlyServer {
         require(!playerPlays[player]);
         require(roomWithoutBets.betAmount > 0);
-        assert(!checkPlayerForTable(player, tables[0][0].players[0]));
+        assert(!checkPlayerForTable(player, tables[0][0].players));
         
         if(roomWithoutBets.roomClosingTime == 0)
             roomWithoutBets.roomClosingTime = block.timestamp + roomWithoutBets.roomLifeTime;
             
         require(roomWithoutBets.roomClosingTime > block.timestamp);
         
-        tables[0][0].players[0].push(player);
+        tables[0][0].players.push(player);
+        
+        tables[0][0].results.push(0);
+        tables[0][0].status.push(false);
+        playerIndex[0][0][player] = tables[0][0].players.length - 1;
+        
         playerPlays[player] = true;
         PutPlayerTable(player, 0, 0);
     }
@@ -215,16 +217,16 @@ contract Game is admins {
     event SetResultPlayer(address player, uint idRoom, uint idTable, uint result);
     function setResultPlayer(address player, uint idRoom, uint idTable, uint result) onlyServer {
         require(player != 0);
-        assert(checkPlayerForTable(player, tables[idRoom][idTable].players[0]));
+        assert(checkPlayerForTable(player, tables[idRoom][idTable].players));
         
         uint playerI = playerIndex[idRoom][idTable][player];
         
-        require(tables[idRoom][idTable].status[0][playerI] != true);
+        require(tables[idRoom][idTable].status[playerI] != true);
         
         tables[idRoom][idTable].countResults++;
 
-        tables[idRoom][idTable].results[0][playerI] = result;
-        tables[idRoom][idTable].status[0][playerI] = true;
+        tables[idRoom][idTable].results[playerI] = result;
+        tables[idRoom][idTable].status[playerI] = true;
         SetResultPlayer(player, idRoom, idTable, result);
         playerPlays[player] = false;
         
@@ -238,9 +240,9 @@ contract Game is admins {
 ///////////////////////////////////////////////// Set result (end)
 ///////////////////////////////////////////////// Pay rewards (begin)
     event PayRewards(address player, uint value, uint place, uint idRoom, uint idTable);
-    function payRewards(uint idRoom, uint idTable) internal {
-        uint[] memory results = tables[idRoom][idTable].results[0];
-        address[] memory addresses = tables[idRoom][idTable].players[0];
+    function payRewards(uint idRoom, uint idTable) constant internal {
+        uint[] memory results = tables[idRoom][idTable].results;
+        address[] memory addresses = tables[idRoom][idTable].players;
         
         uint i;
         uint key;
@@ -263,7 +265,7 @@ contract Game is admins {
         transferRewards(results, addresses, idRoom, idTable);
     }
     
-    function transferRewards(uint[] results, address[] addresses, uint idRoom, uint idTable) internal {
+    function transferRewards(uint[] results, address[] addresses, uint idRoom, uint idTable) constant internal {
         uint bank;
         uint16[17] memory awards;
         if(idRoom != 0 && idTable != 0){
@@ -272,7 +274,7 @@ contract Game is admins {
             awards = awardsObj.getAwards(rooms[idRoom].maxPlayers);
         } else {
             bank = roomWithoutBets.betAmount;
-            awards = awardsObj.getAwards(tables[0][0].players[0].length);
+            awards = awardsObj.getAwards(tables[0][0].players.length);
         }
         
         for(uint l = 0; l < awards.length && awards[l] != 0; l++){
@@ -311,13 +313,9 @@ contract Game is admins {
 
         delete rooms[idRoom];
         for(uint j = 0; j < indexTables[idRoom].length; j++){
-            // for(uint k = 0; k < tables[idRoom][indexTables[idRoom][j]].players[0].length; k++){
-            //     delete tables[idRoom][indexTables[idRoom][j]].players[0][tables[idRoom][indexTables[idRoom][j]].players[0][k]];
-            //     playerPlays[tables[idRoom][indexTables[idRoom][j]].players[k]] = false;
-            // }
-            delete tables[idRoom][indexTables[idRoom][j]].players[0];
-            delete tables[idRoom][indexTables[idRoom][j]].status[0];
-            delete tables[idRoom][indexTables[idRoom][j]].results[0];
+            delete tables[idRoom][indexTables[idRoom][j]].players;
+            delete tables[idRoom][indexTables[idRoom][j]].status;
+            delete tables[idRoom][indexTables[idRoom][j]].results;
             delete tables[idRoom][indexTables[idRoom][j]].countResults;
         }
         delete indexTables[idRoom];
@@ -329,15 +327,11 @@ contract Game is admins {
         require(roomWithoutBets.betAmount > 0);
         
         delete roomWithoutBets;
-        // for(uint i = 0; i < tables[0][0].players[0].length; i++){
-        //     delete tables[0][0][tables[0][0].players[0][i]];
-        // }
-        delete tables[0][0].players[0];
-        delete tables[0][0].status[0];
-        delete tables[0][0].results[0];
+        delete tables[0][0].players;
+        delete tables[0][0].status;
+        delete tables[0][0].results;
         delete tables[0][0].countResults;
         
-        // delete tables[0][0].players;
         DeleteRoomWithoutBets(0);
     }
 ///////////////////////////////////////////////// Delete room(end)
@@ -365,8 +359,8 @@ contract Game is admins {
         assert(checkAllPlayersFinishedPlaying(0,0));
         
         payRewards(0, 0);
-        for(uint k = 0; k < tables[0][0].players[0].length; k++){
-            playerPlays[tables[0][0].players[0][k]] = false;
+        for(uint k = 0; k < tables[0][0].players.length; k++){
+            playerPlays[tables[0][0].players[k]] = false;
         }
         deleteRoomWithoutBets();
         CloseRoomWithoutBetsForcefully(0);
