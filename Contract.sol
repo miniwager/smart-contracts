@@ -50,9 +50,11 @@ contract Game is Admins {
         uint roomClosingTime;
     }
     
-    struct InformationsPlayer {
-        bool status;
-        uint result;
+    struct Table {
+        address[] players;
+        uint[] results;
+        bool[] status;
+        uint countResults;
     }
 ///////////////////////////////////////////////// Storage (begin)
     uint countIdRoom = 1;
@@ -64,13 +66,6 @@ contract Game is Admins {
     RoomWithoutBets public roomWithoutBets;
 
     mapping(uint => Room) public rooms;
-    
-    struct Table {
-        address[] players;
-        uint[] results;
-        bool[] status;
-        uint countResults;
-    }
     
     mapping(uint => uint[]) public indexTables;
     mapping(uint => mapping(uint => Table)) public tables;
@@ -313,6 +308,9 @@ contract Game is Admins {
 
         delete rooms[idRoom];
         for(uint j = 0; j < indexTables[idRoom].length; j++){
+            for(uint k = 0; k < tables[idRoom][indexTables[idRoom][j]].players.length; k++){
+                playerPlays[tables[idRoom][indexTables[idRoom][j]].players[k]] = false;
+            }
             delete tables[idRoom][indexTables[idRoom][j]].players;
             delete tables[idRoom][indexTables[idRoom][j]].status;
             delete tables[idRoom][indexTables[idRoom][j]].results;
