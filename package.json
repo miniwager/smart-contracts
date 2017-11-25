@@ -1,5 +1,5 @@
 {
-	"scrpts": {
+	"scripts": {
 		"migrate": "./node_modules/bin/truffle migrate"
 	},
   "dependencies": {
