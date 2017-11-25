@@ -1,0 +1,8 @@
+{
+	"scrpts": {
+		"migrate": "./node_modules/bin/truffle migrate"
+	},
+  "dependencies": {
+    "truffle": "^4.0.1"
+  }
+}
