@@ -1,0 +1,627 @@
+[
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "idRoom",
+				"type": "uint256"
+			}
+		],
+		"name": "putPlayerTable",
+		"outputs": [],
+		"payable": true,
+		"stateMutability": "payable",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [
+			{
+				"name": "",
+				"type": "uint256"
+			},
+			{
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "tables",
+		"outputs": [
+			{
+				"name": "countResults",
+				"type": "uint256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "roomWithoutBets",
+		"outputs": [
+			{
+				"name": "betAmount",
+				"type": "uint256"
+			},
+			{
+				"name": "roomLifeTime",
+				"type": "uint256"
+			},
+			{
+				"name": "roomClosingTime",
+				"type": "uint256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "a",
+				"type": "address"
+			}
+		],
+		"name": "removeAdmin",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [
+			{
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "rooms",
+		"outputs": [
+			{
+				"name": "countIdTable",
+				"type": "uint256"
+			},
+			{
+				"name": "betAmount",
+				"type": "uint256"
+			},
+			{
+				"name": "maxPlayers",
+				"type": "uint256"
+			},
+			{
+				"name": "lastBusyTable",
+				"type": "uint256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [
+			{
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "admins",
+		"outputs": [
+			{
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "player",
+				"type": "address"
+			},
+			{
+				"name": "idRoom",
+				"type": "uint256"
+			},
+			{
+				"name": "idTable",
+				"type": "uint256"
+			},
+			{
+				"name": "result",
+				"type": "uint256"
+			}
+		],
+		"name": "setResultPlayer",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [
+			{
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "playerPlays",
+		"outputs": [
+			{
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [],
+		"name": "closeRoomWithoutBetsForcefully",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "_fee",
+				"type": "uint256"
+			}
+		],
+		"name": "setFee",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "a",
+				"type": "address"
+			}
+		],
+		"name": "addAdmin",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "betAmount",
+				"type": "uint256"
+			},
+			{
+				"name": "maxPlayers",
+				"type": "uint256"
+			}
+		],
+		"name": "createRoomWithRates",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "serverAddress",
+		"outputs": [
+			{
+				"name": "",
+				"type": "address"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "fee",
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "newAwards",
+				"type": "address"
+			}
+		],
+		"name": "setAwards",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "newAddress",
+				"type": "address"
+			}
+		],
+		"name": "changeServerAddr",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "idRoom",
+				"type": "uint256"
+			}
+		],
+		"name": "deleteRoomWithRates",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "player",
+				"type": "address"
+			}
+		],
+		"name": "putPlayerTableRWB",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "sum",
+				"type": "uint256"
+			}
+		],
+		"name": "withdrawalFunds",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [
+			{
+				"name": "",
+				"type": "uint256"
+			},
+			{
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "indexTables",
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "roomLifeTime",
+				"type": "uint256"
+			}
+		],
+		"name": "createRoomWithoutBets",
+		"outputs": [],
+		"payable": true,
+		"stateMutability": "payable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"name": "_fee",
+				"type": "uint256"
+			},
+			{
+				"name": "awardsAddress",
+				"type": "address"
+			},
+			{
+				"name": "servAddress",
+				"type": "address"
+			}
+		],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "constructor"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"name": "oldFee",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"name": "newFee",
+				"type": "uint256"
+			}
+		],
+		"name": "SetFee",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"name": "oldAwards",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"name": "newAwards",
+				"type": "address"
+			}
+		],
+		"name": "SetAwards",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"name": "id",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"name": "betAmount",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"name": "maxPlayers",
+				"type": "uint256"
+			}
+		],
+		"name": "CreateRoomWithRates",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"name": "betAmount",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"name": "roomLifeTime",
+				"type": "uint256"
+			}
+		],
+		"name": "CreateRoomWithoutBets",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"name": "player",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"name": "idRoom",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"name": "idTable",
+				"type": "uint256"
+			}
+		],
+		"name": "PutPlayerTable",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"name": "player",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"name": "idRoom",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"name": "idTable",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"name": "result",
+				"type": "uint256"
+			}
+		],
+		"name": "SetResultPlayer",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"name": "player",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"name": "value",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"name": "place",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"name": "idRoom",
+				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"name": "idTable",
+				"type": "uint256"
+			}
+		],
+		"name": "PayRewards",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"name": "idRoom",
+				"type": "uint256"
+			}
+		],
+		"name": "DeleteRoomWithRates",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"name": "idRoom",
+				"type": "uint256"
+			}
+		],
+		"name": "DeleteRoomWithoutBets",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"name": "admin",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"name": "sum",
+				"type": "uint256"
+			}
+		],
+		"name": "WithdrawalFunds",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"name": "idRoom",
+				"type": "uint256"
+			}
+		],
+		"name": "CloseRoomWithoutBetsForcefully",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"name": "newAdmin",
+				"type": "address"
+			}
+		],
+		"name": "AddAdmin",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"name": "adminAdress",
+				"type": "address"
+			}
+		],
+		"name": "RemoveAdmin",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"name": "oldAddress",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"name": "newAddress",
+				"type": "address"
+			}
+		],
+		"name": "ChangeServerAddr",
+		"type": "event"
+	}
+]
