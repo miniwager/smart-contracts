@@ -1,7 +1,7 @@
 ### Contract deployment:
 First of all, the contract with the awards is loaded.
 When the contract is loaded, the constructor takes the commission, the address of the contract with the awards and the address of the server.
-If the server address is not sent, the server will be `` `sender```.
+If the server address is not sent, the server will be ```sender```.
 
 - [Awards abi](contracts/build/awards.abi.json)
 - [Awards bytecode](contracts/build/awards.bytecode.bin)
