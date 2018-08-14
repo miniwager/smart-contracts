@@ -294,8 +294,11 @@ contract Game is Admins {
 		for (uint j = 0; j < indexTables[idRoom].length; j++) {
 			for (uint k = 0; k < tables[idRoom][indexTables[idRoom][j]].players.length; k++) {
 				playerPlays[tables[idRoom][indexTables[idRoom][j]].players[k]] = false;
-                require(tables[idRoom][indexTables[idRoom][j]].players[k].send(rooms[idRoom].betAmount));
-                PayRewards(tables[idRoom][indexTables[idRoom][j]].players[k], rooms[idRoom].betAmount, 1, idRoom, j);
+
+                if (!checkAllPlayersFinishedPlaying(idRoom, indexTables[idRoom][j])) {
+                    require(tables[idRoom][indexTables[idRoom][j]].players[k].send(rooms[idRoom].betAmount));
+                    PayRewards(tables[idRoom][indexTables[idRoom][j]].players[k], rooms[idRoom].betAmount, 1, idRoom, indexTables[idRoom][j]);
+                }
 			}
 			delete tables[idRoom][indexTables[idRoom][j]].players;
 			delete tables[idRoom][indexTables[idRoom][j]].status;
